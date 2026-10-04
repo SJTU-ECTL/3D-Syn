@@ -1,0 +1,211 @@
+#!/usr/bin/env bash
+# Run the TaiWei Yosys-to-Genus comparison baseline without modifying TaiWei.
+#
+# The driver preserves the Yosys netlist, runs Genus on that mapped netlist,
+# and publishes the Genus result under TaiWei's standard synthesis filenames.
+# All tools and external paths are supplied explicitly on the command line.
+
+set -euo pipefail
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+syn3d_root="$(cd -- "${script_dir}/../.." && pwd)"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  run_baseline_synth.sh \
+    --taiwei-home PATH \
+    --platform PLATFORM_3D \
+    --design DESIGN \
+    --run-dir PATH \
+    --yosys-bin PATH \
+    --genus-bin PATH \
+    [options]
+
+Required arguments:
+  --taiwei-home PATH       TaiWei checkout containing TaiWei-Pin-3D.
+  --platform NAME          Public 3D platform name, such as asap7_3D.
+  --design NAME            Design directory and output namespace.
+  --run-dir PATH           Root for logs, objects, reports, and results.
+  --yosys-bin PATH         Yosys executable used by TaiWei ord-synth.
+  --genus-bin PATH         Genus executable used on the Yosys netlist.
+
+Optional arguments:
+  --design-config PATH     2D config.mk; defaults to the repository case.
+  --design-sdc PATH        Constraint file; defaults to the repository case.
+  --flow-variant NAME      Output namespace (default: baseline).
+  --num-cores N            Tool thread count (default: 1).
+  --synth-opt-mode MODE    normal or low_effort (default: low_effort).
+  -h, --help               Show this help text.
+
+Outputs:
+  RUN_DIR/results/PLATFORM/DESIGN/FLOW_VARIANT/
+    1_synth_yosys.v        Preserved TaiWei Yosys result.
+    1_synth_netlist.v      Genus result generated from the Yosys netlist.
+    1_synth_netlist.sdc    Constraints written by Genus.
+    1_synth.v              Canonical backend input, copied from Genus output.
+    1_synth.sdc            Canonical backend copy of --design-sdc.
+EOF
+}
+
+fail() {
+  printf '[3D-Syn][baseline] %s\n' "$*" >&2
+  exit 2
+}
+
+require_file() {
+  local label="$1"
+  local path="$2"
+  [[ -s "${path}" ]] || fail "Missing or empty ${label}: ${path}"
+}
+
+require_executable() {
+  local label="$1"
+  local path="$2"
+  [[ -x "${path}" ]] || fail "${label} is not executable: ${path}"
+}
+
+absolute_tool_path() {
+  local path="$1"
+  if [[ "${path}" = /* ]]; then
+    printf '%s\n' "${path}"
+  else
+    printf '%s/%s\n' "$(cd -- "$(dirname -- "${path}")" && pwd)" "$(basename -- "${path}")"
+  fi
+}
+
+taiwei_home=""
+platform=""
+design=""
+run_dir=""
+yosys_bin=""
+genus_bin=""
+design_config=""
+design_sdc=""
+flow_variant="baseline"
+num_cores="1"
+synth_opt_mode="low_effort"
+
+while (($#)); do
+  case "$1" in
+    --taiwei-home) taiwei_home="${2:-}"; shift 2 ;;
+    --platform) platform="${2:-}"; shift 2 ;;
+    --design) design="${2:-}"; shift 2 ;;
+    --run-dir) run_dir="${2:-}"; shift 2 ;;
+    --yosys-bin) yosys_bin="${2:-}"; shift 2 ;;
+    --genus-bin) genus_bin="${2:-}"; shift 2 ;;
+    --design-config) design_config="${2:-}"; shift 2 ;;
+    --design-sdc) design_sdc="${2:-}"; shift 2 ;;
+    --flow-variant) flow_variant="${2:-}"; shift 2 ;;
+    --num-cores) num_cores="${2:-}"; shift 2 ;;
+    --synth-opt-mode) synth_opt_mode="${2:-}"; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) fail "Unknown argument: $1" ;;
+  esac
+done
+
+[[ -n "${taiwei_home}" ]] || fail '--taiwei-home is required.'
+[[ -n "${platform}" ]] || fail '--platform is required.'
+[[ -n "${design}" ]] || fail '--design is required.'
+[[ -n "${run_dir}" ]] || fail '--run-dir is required.'
+[[ -n "${yosys_bin}" ]] || fail '--yosys-bin is required.'
+[[ -n "${genus_bin}" ]] || fail '--genus-bin is required.'
+
+[[ "${platform}" =~ ^[A-Za-z0-9_.-]+_3D$ ]] || fail "Invalid platform: ${platform}"
+[[ "${design}" =~ ^[A-Za-z0-9_.-]+$ ]] || fail "Invalid design: ${design}"
+[[ "${flow_variant}" =~ ^[A-Za-z0-9_.-]+$ ]] || fail "Invalid flow variant: ${flow_variant}"
+[[ "${num_cores}" =~ ^[1-9][0-9]*$ ]] || fail "--num-cores must be a positive integer: ${num_cores}"
+case "${synth_opt_mode}" in
+  normal|low_effort) ;;
+  *) fail "--synth-opt-mode must be normal or low_effort: ${synth_opt_mode}" ;;
+esac
+
+taiwei_home="$(realpath -m -- "${taiwei_home}")"
+taiwei_flow_home="${taiwei_home}/TaiWei-Pin-3D"
+run_dir="$(realpath -m -- "${run_dir}")"
+# Preserve tool-entry symlinks. Cadence wrappers use the invoked path to find
+# adjacent runtime files and stop working if resolved to the shared wrapper.
+yosys_bin="$(absolute_tool_path "${yosys_bin}")"
+genus_bin="$(absolute_tool_path "${genus_bin}")"
+
+if [[ -z "${design_config}" ]]; then
+  design_config="${syn3d_root}/configs/${platform}/${design}/config2d.mk"
+fi
+if [[ -z "${design_sdc}" ]]; then
+  design_sdc="${syn3d_root}/configs/${platform}/${design}/constraint.sdc"
+fi
+design_config="$(realpath -m -- "${design_config}")"
+design_sdc="$(realpath -m -- "${design_sdc}")"
+
+require_file 'TaiWei flow Makefile' "${taiwei_flow_home}/Makefile"
+require_file '3D-Syn make overlay' "${syn3d_root}/taiwei/3dsyn.mk"
+require_file '2D design configuration' "${design_config}"
+require_file 'design constraints' "${design_sdc}"
+require_file 'Genus-on-netlist script' "${script_dir}/run_genus_on_netlist.tcl"
+require_executable 'Yosys' "${yosys_bin}"
+require_executable 'Genus' "${genus_bin}"
+
+resolved_syn3d_root="$(realpath -m -- "${syn3d_root}")"
+resolved_taiwei_home="$(realpath -m -- "${taiwei_home}")"
+if [[ "${run_dir}" == "${resolved_syn3d_root}" || "${run_dir}" == "${resolved_taiwei_home}" ]]; then
+  fail "--run-dir must not be a source repository root: ${run_dir}"
+fi
+
+case_dir="${platform}/${design}/${flow_variant}"
+log_dir="${run_dir}/logs/${case_dir}"
+objects_dir="${run_dir}/objects/${case_dir}"
+reports_dir="${run_dir}/reports/${case_dir}"
+results_dir="${run_dir}/results/${case_dir}"
+mkdir -p -- "${log_dir}" "${objects_dir}" "${reports_dir}" "${results_dir}"
+
+common_make_args=(
+  -C "${taiwei_flow_home}"
+  -f "${taiwei_flow_home}/Makefile"
+  "DESIGN_CONFIG=${design_config}"
+  "DESIGN_NICKNAME=${design}"
+  "FLOW_VARIANT=${flow_variant}"
+  "WORK_HOME=${run_dir}"
+  "LOG_DIR=${log_dir}"
+  "OBJECTS_DIR=${objects_dir}"
+  "REPORTS_DIR=${reports_dir}"
+  "RESULTS_DIR=${results_dir}"
+  "SDC_FILE=${design_sdc}"
+  "DESIGN_SDC=${design_sdc}"
+  "NUM_CORES=${num_cores}"
+  "YOSYS_EXE=${yosys_bin}"
+  "GENUS_EXE=${genus_bin}"
+  "SYNTH_OPT_MODE=${synth_opt_mode}"
+)
+
+printf '[3D-Syn][baseline] Platform          : %s\n' "${platform}"
+printf '[3D-Syn][baseline] Design            : %s\n' "${design}"
+printf '[3D-Syn][baseline] Constraints       : %s\n' "${design_sdc}"
+printf '[3D-Syn][baseline] Synthesis effort  : %s\n' "${synth_opt_mode}"
+printf '[3D-Syn][baseline] Result directory  : %s\n' "${results_dir}"
+
+printf '[3D-Syn][baseline] Stage 1/2: TaiWei Yosys synthesis\n'
+make "${common_make_args[@]}" ord-synth
+require_file 'TaiWei Yosys netlist' "${results_dir}/1_synth.v"
+cp -f -- "${results_dir}/1_synth.v" "${results_dir}/1_synth_yosys.v"
+
+printf '[3D-Syn][baseline] Stage 2/2: Genus optimization of Yosys netlist\n'
+make "${common_make_args[@]}" \
+  -f "${syn3d_root}/taiwei/3dsyn.mk" \
+  3dsyn-baseline-genus
+
+require_file 'preserved Yosys netlist' "${results_dir}/1_synth_yosys.v"
+require_file 'Genus netlist' "${results_dir}/1_synth_netlist.v"
+require_file 'Genus constraints' "${results_dir}/1_synth_netlist.sdc"
+
+# TaiWei backend stages consume these canonical synthesis filenames. Preserve
+# the Genus-exported SDC as an audit artifact, but publish the explicitly
+# selected design SDC for backend use. Genus may add library-qualified
+# set_dont_use commands that are valid for the 2D library and invalid after
+# cells are mapped to tier-qualified 3D libraries.
+cp -f -- "${results_dir}/1_synth_netlist.v" "${results_dir}/1_synth.v"
+cp -f -- "${design_sdc}" "${results_dir}/1_synth.sdc"
+
+printf '[3D-Syn][baseline] Yosys netlist     : %s\n' "${results_dir}/1_synth_yosys.v"
+printf '[3D-Syn][baseline] Genus netlist     : %s\n' "${results_dir}/1_synth_netlist.v"
+printf '[3D-Syn][baseline] Genus constraints : %s\n' "${results_dir}/1_synth_netlist.sdc"
+printf '[3D-Syn][baseline] Backend constraints: %s\n' "${design_sdc}"

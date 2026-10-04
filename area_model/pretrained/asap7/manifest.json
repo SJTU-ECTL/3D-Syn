@@ -1,0 +1,82 @@
+{
+  "manifest_version": 1,
+  "model_format_version": 1,
+  "feature_schema_version": 1,
+  "platform": "asap7",
+  "technology": "upper",
+  "model_class": "UtilizationGNN",
+  "pytorch_min_version": "2.0",
+  "features": {
+    "node_feat_dim": 9,
+    "graph_feat_dim": 17,
+    "bitwidth_vec_dim": 5,
+    "max_bitwidth": 32.0,
+    "cell_type_column": 8,
+    "node_feature_keys": [
+      "cell_area",
+      "cell_degree",
+      "avg_neighbor_degree",
+      "betweenness_centrality",
+      "closeness_centrality",
+      "degree_centrality",
+      "clustering_coeff",
+      "eccentricity"
+    ],
+    "graph_feature_keys": [
+      "n_cells",
+      "n_nets",
+      "n_pins",
+      "n_nets_fanout_5_10",
+      "n_nets_fanout_gt10",
+      "n_internal_nets",
+      "n_border_nets",
+      "total_cell_area",
+      "avg_cell_degree",
+      "avg_net_degree",
+      "avg_clustering_coeff",
+      "density",
+      "diameter",
+      "radius",
+      "edge_connectivity",
+      "n_colors_greedy",
+      "avg_global_efficiency"
+    ]
+  },
+  "checkpoint_files": {
+    "best_model.pt": {
+      "sha256": "d578941b127f01e174cca135f1e1b33f4d578dcbd60a40f092abc58ada73c1c7",
+      "size_bytes": 253666
+    },
+    "norm_stats.pt": {
+      "sha256": "4fbe7dd5e549adeeb9b0edaae1a7067a261d2e81daddb1416f18eff5dfff35c6",
+      "size_bytes": 2088
+    },
+    "config.json": {
+      "sha256": "b73d3bc647f005cd1daee8d70b66784215768b13b667a33836acb9dafdd487e5",
+      "size_bytes": 529
+    }
+  },
+  "resources": {
+    "cell_type_vocab.json": {
+      "sha256": "7cf330f841763623af2e2dcb7525ddcf8d6b1f9b76538053a42dfadc84b23e99",
+      "size_bytes": 3715
+    },
+    "port_schema.json": {
+      "sha256": "2feea5b520a19cbe716e4f290cf7006e33209fca2e4c48c0ed0eef97e28bfc91",
+      "size_bytes": 9822
+    }
+  },
+  "training_summary": {
+    "seed": 42,
+    "train_samples": 657,
+    "validation_samples": 140,
+    "test_samples": 142
+  },
+  "evaluation": {
+    "validation_mse": 0.002538364613428712,
+    "test_mse": 0.0024433592334389687,
+    "test_mae": 0.03587505221366882,
+    "max_absolute_error": 0.1632319688796997
+  }
+}
+

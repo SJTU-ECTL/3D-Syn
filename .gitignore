@@ -1,0 +1,30 @@
+# Flow-generated files.
+/.venv/
+/runs/
+/yosys-plugin/build/
+
+# Python caches.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editor and OS files.
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+*~
+*.tmp
+
+# Stray EDA session files.
+*.log
+*.logv
+*.cmd
+*.history
+core
+core.*
