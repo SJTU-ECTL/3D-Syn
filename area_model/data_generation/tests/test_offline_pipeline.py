@@ -75,6 +75,41 @@ class OfflinePipelineUnitTest(unittest.TestCase):
                 places=5,
             )
 
+    def test_floorplan_core_coordinates_obey_process_grids(self):
+        for technology in ("asap7", "nangate45"):
+            width, height = pnr.compute_core_dims(technology, 0.5, 6, 0.3)
+            floorplan = pnr.platform_floorplan(technology, width, height)
+            site_width = pnr.SITE_WIDTH[technology]
+            site_height = pnr.SITE_HEIGHT[technology]
+            core_x0 = site_width
+            core_y0 = site_height
+            core_x1 = round(core_x0 + width, 6)
+            core_y1 = round(core_y0 + height, 6)
+            self.assertIn(
+                f'-core_area "{core_x0} {core_y0} {core_x1} {core_y1}"',
+                floorplan,
+            )
+            self.assertAlmostEqual(core_x1 / site_width,
+                                   round(core_x1 / site_width), places=5)
+            self.assertAlmostEqual(core_y1 / site_height,
+                                   round(core_y1 / site_height), places=5)
+            self.assertGreaterEqual(round(height / site_height),
+                                    pnr.MIN_ROWS[technology])
+            self.assertGreaterEqual(round(width / site_width),
+                                    pnr.MIN_COLS[technology])
+
+    def test_pnr_stability_guards_are_process_specific(self):
+        self.assertEqual(pnr.MIN_COLS["nangate45"], 30)
+        for technology in ("asap7", "nangate45"):
+            placement = pnr.platform_placement(technology, 2.0)
+            self.assertIn("-corner_avoidance 0", placement)
+
+        output_dir = Path("/tmp/offline-pnr-test")
+        asap7_routing = pnr.platform_routing("asap7", output_dir)
+        nangate45_routing = pnr.platform_routing("nangate45", output_dir)
+        self.assertIn("global_route -critical_nets_percentage 0", asap7_routing)
+        self.assertNotIn("-critical_nets_percentage", nangate45_routing)
+
     def test_split_manifest_has_no_source_leakage(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)

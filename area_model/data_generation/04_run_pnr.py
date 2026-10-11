@@ -45,10 +45,11 @@ DEFAULT_THREADS = 4
 DEFAULT_WORKERS = 4
 SITE_WIDTH = {"nangate45": 0.19, "asap7": 0.054}
 SITE_HEIGHT = {"nangate45": 1.4, "asap7": 0.270}
-DIE_MARGIN = {"nangate45": 0.19, "asap7": 0.027}
 PIN_PITCH = {"nangate45": 0.19, "asap7": 0.108}
 MIN_ROWS = {"nangate45": 10, "asap7": 30}
-MIN_COLS = {"nangate45": 10, "asap7": 30}
+# The widest Nangate45 standard cell is 24 sites (4.56 um).  Keep six
+# additional sites so legalization has room beside a wide sequential cell.
+MIN_COLS = {"nangate45": 30, "asap7": 30}
 
 
 def tcl_path(path: Path) -> str:
@@ -114,17 +115,20 @@ def platform_config(platform: dict, cell_lef: Path) -> str:
 
 def platform_floorplan(technology: str, core_width: float,
                        core_height: float) -> str:
-    margin = DIE_MARGIN[technology]
-    die_width = round(core_width + 2 * margin, 6)
-    die_height = round(core_height + 2 * margin, 6)
-    core_x1 = round(margin + core_width, 6)
-    core_y1 = round(margin + core_height, 6)
+    site_width = SITE_WIDTH[technology]
+    site_height = SITE_HEIGHT[technology]
+    core_x0 = site_width
+    core_y0 = site_height
+    core_x1 = round(core_x0 + core_width, 6)
+    core_y1 = round(core_y0 + core_height, 6)
+    die_width = round(core_x1 + site_width, 6)
+    die_height = round(core_y1 + site_height, 6)
     site = "FreePDK45_38x28_10R_NP_162NW_34O" \
         if technology == "nangate45" else "asap7sc7p5t"
     base = f"""\
 initialize_floorplan \\
     -die_area  "0 0 {die_width} {die_height}" \\
-    -core_area "{margin} {margin} {core_x1} {core_y1}" \\
+    -core_area "{core_x0} {core_y0} {core_x1} {core_y1}" \\
     -site {site}
 """
     if technology == "nangate45":
@@ -175,6 +179,7 @@ insert_tiecells "LOGIC0_X1_bottom/Z" -prefix "TIE_LO_"
 insert_tiecells "LOGIC1_X1_bottom/Z" -prefix "TIE_HI_"
 place_pins -hor_layers M3 -ver_layers M2 \\
     -exclude top:* -exclude right:* -exclude bottom:* \\
+    -corner_avoidance 0 \\
     -min_distance 1 -min_distance_in_tracks
 global_placement -density {density}
 detailed_placement
@@ -185,6 +190,7 @@ insert_tiecells "TIEHIx1_ASAP7_75t_R_upper/H" -prefix "TIE_HI_"
 insert_tiecells "TIELOx1_ASAP7_75t_R_upper/L" -prefix "TIE_LO_"
 place_pins -hor_layers M4_m -ver_layers M5_m \\
     -exclude top:* -exclude right:* -exclude bottom:* \\
+    -corner_avoidance 0 \\
     -min_distance 1 -min_distance_in_tracks
 global_placement -density {density}
 detailed_placement
@@ -238,7 +244,7 @@ detailed_route -output_drc {drc} -droute_end_iter 2
 set_global_routing_layer_adjustment M6_m-M2_m 0.25
 set_routing_layers -signal M6_m-M2_m
 set_routing_layers -clock M6_m-M4_m
-global_route -guide_file {guide}
+global_route -critical_nets_percentage 0 -guide_file {guide}
 set_routing_layers -signal M6_m-M2_m
 detailed_route -output_drc {drc} -droute_end_iter 2 \\
     -via_in_pin_bottom_layer M1_m -via_in_pin_top_layer M3_m
