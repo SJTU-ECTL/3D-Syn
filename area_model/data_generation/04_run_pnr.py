@@ -41,6 +41,8 @@ from config import TRAINING_TECHNOLOGIES, resolve_training_platform
 
 
 GROUPS = ("ff_fa", "arith_same", "arith_rand")
+DEFAULT_THREADS = 4
+DEFAULT_WORKERS = 4
 SITE_WIDTH = {"nangate45": 0.19, "asap7": 0.054}
 SITE_HEIGHT = {"nangate45": 1.4, "asap7": 0.270}
 DIE_MARGIN = {"nangate45": 0.19, "asap7": 0.027}
@@ -435,10 +437,10 @@ def parse_args() -> argparse.Namespace:
                         help="floorplan target utilization (default: 0.3)")
     parser.add_argument("--placement-density", type=float, default=2.0,
                         help="OpenROAD global-placement density (default: 2.0)")
-    parser.add_argument("--threads", type=int, default=1,
-                        help="threads per OpenROAD process (default: 1)")
-    parser.add_argument("--workers", type=int, default=1,
-                        help="parallel OpenROAD processes (default: 1)")
+    parser.add_argument("--threads", type=int, default=DEFAULT_THREADS,
+                        help=f"threads per OpenROAD process (default: {DEFAULT_THREADS})")
+    parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS,
+                        help=f"parallel OpenROAD processes (default: {DEFAULT_WORKERS})")
     parser.add_argument("--force", action="store_true",
                         help="rerun samples with existing valid labels")
     return parser.parse_args()

@@ -31,6 +31,7 @@ from config import TRAINING_TECHNOLOGIES, resolve_training_platform
 
 
 GROUPS = ("ff_fa", "arith_same", "arith_rand")
+DEFAULT_WORKERS = 16
 
 
 def yosys_path(path: Path) -> str:
@@ -161,8 +162,8 @@ def parse_args() -> argparse.Namespace:
                         help="Yosys executable for this run")
     parser.add_argument("--data-root", type=Path, required=True,
                         help="external root containing 01_rtl and outputs")
-    parser.add_argument("--workers", type=int, default=1,
-                        help="parallel Yosys processes (default: 1)")
+    parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS,
+                        help=f"parallel Yosys processes (default: {DEFAULT_WORKERS})")
     parser.add_argument("--force", action="store_true",
                         help="rerun samples with an existing netlist")
     return parser.parse_args()

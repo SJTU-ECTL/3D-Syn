@@ -74,6 +74,20 @@ The groups are `ff_fa`, `arith_same`, and `arith_rand`. Batch defaults preserve
 the original 1-to-32 width range, 64 random points per arithmetic module, and
 seed 42.
 
+The published dataset contains 17 RTLIL unit types and 992 candidates for each
+technology:
+
+| Unit group | Types | Configurations per type | Candidates |
+| --- | ---: | --- | ---: |
+| Multi-bit registers | 9 | 32 shared-width configurations | 288 |
+| Full adder | 1 | 32 shared-width configurations | 32 |
+| Other arithmetic units | 7 | 32 same-width and 64 different-width configurations | 672 |
+| Total | 17 | | 992 |
+
+The multi-bit registers are `DFF`, `DFFE`, `DFFSR`, `DFFSRE`, `ADFF`, `ADFFE`,
+`SDFF`, `SDFFE`, and `SDFFCE`. The full adder is `FA`. The other arithmetic
+units are `ADD`, `SUB`, `MUL`, `DIV`, `MOD`, `ALU`, and `MACC`.
+
 ```bash
 python3 area_model/data_generation/01_generate_rtl.py arith_same \
   --simlib area_model/resources/simlib.v \
@@ -102,7 +116,7 @@ python3 area_model/data_generation/02_run_synth.py arith_same \
   --platform-dir "$PLATFORM_DIR" \
   --yosys-bin "$YOSYS_BIN" \
   --data-root "$DATA_ROOT" \
-  --workers 4
+  --workers 16
 ```
 
 For a single case, append `--target ADD 2 2 2`.
@@ -117,7 +131,7 @@ python3 area_model/data_generation/03_extract_features.py arith_same \
   --technology asap7 \
   --platform-dir "$PLATFORM_DIR" \
   --data-root "$DATA_ROOT" \
-  --workers 4
+  --workers 16
 ```
 
 ## 04: generate routed labels
@@ -131,7 +145,7 @@ python3 area_model/data_generation/04_run_pnr.py arith_same \
   --cell-lef "$GENERATED_RESOURCES/asap7_patched_cell.lef" \
   --openroad-bin "$OPENROAD_BIN" \
   --data-root "$DATA_ROOT" \
-  --threads 4 --workers 1
+  --threads 4 --workers 4
 ```
 
 Nangate45 uses the platform cell LEF directly, so omit `--cell-lef`:
@@ -142,10 +156,15 @@ python3 area_model/data_generation/04_run_pnr.py arith_same \
   --platform-dir "$PLATFORM_DIR" \
   --openroad-bin "$OPENROAD_BIN" \
   --data-root "$DATA_ROOT" \
-  --threads 4 --workers 1
+  --threads 4 --workers 4
 ```
 
 Append `--target ADD 2 2 2` to either command for a single case.
+
+The commands above define the published 16-core configuration: synthesis uses
+16 single-process workers, feature extraction uses 16 process workers, and P&R
+uses four OpenROAD processes with four threads per process. The worker and
+thread options remain configurable for machines with a different CPU budget.
 
 ## 05: build datasets and splits
 

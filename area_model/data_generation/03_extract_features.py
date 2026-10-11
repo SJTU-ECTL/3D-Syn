@@ -22,7 +22,7 @@ Example:
 import argparse
 import json
 import sys
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -31,6 +31,7 @@ import predict_util
 
 
 GROUPS = ("ff_fa", "arith_same", "arith_rand")
+DEFAULT_WORKERS = 16
 
 
 def parse_bitwidth_vec(stem: str) -> list[int]:
@@ -137,8 +138,8 @@ def parse_args() -> argparse.Namespace:
                         help="TaiWei hybrid platform directory")
     parser.add_argument("--data-root", type=Path, required=True,
                         help="external generation root")
-    parser.add_argument("--workers", type=int, default=1,
-                        help="parallel feature workers (default: 1)")
+    parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS,
+                        help=f"parallel feature processes (default: {DEFAULT_WORKERS})")
     parser.add_argument("--force", action="store_true",
                         help="replace existing feature JSON")
     return parser.parse_args()
@@ -168,7 +169,7 @@ def main() -> int:
         for path in netlists
     ]
     counts = {"ok": 0, "skipped": 0, "failed": 0}
-    with ThreadPoolExecutor(max_workers=args.workers) as executor:
+    with ProcessPoolExecutor(max_workers=args.workers) as executor:
         for wrapper, state, detail in executor.map(process_one, tasks):
             counts[state] += 1
             print(f"[{state}] {wrapper}: {detail}")

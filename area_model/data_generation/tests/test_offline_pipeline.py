@@ -24,6 +24,34 @@ dataset_builder = load_script("offline_build_dataset", "05_build_dataset.py")
 
 
 class OfflinePipelineUnitTest(unittest.TestCase):
+    def test_supported_units_match_the_published_dataset(self):
+        self.assertEqual(
+            generate.FF_FA_MODULES,
+            [
+                "FA", "DFF", "DFFE", "DFFSR", "DFFSRE", "ADFF", "ADFFE",
+                "SDFF", "SDFFE", "SDFFCE",
+            ],
+        )
+        self.assertEqual(
+            generate.ARITH_MODULES,
+            ["ADD", "SUB", "MUL", "DIV", "MOD", "ALU", "MACC"],
+        )
+
+    def test_default_generation_has_992_candidates_per_technology(self):
+        ff_fa = len(generate.FF_FA_MODULES) * len(
+            generate.width_points("ff_fa", 32, 64, 42)
+        )
+        arithmetic_same = len(generate.ARITH_MODULES) * len(
+            generate.width_points("arith_same", 32, 64, 42)
+        )
+        arithmetic_random = len(generate.ARITH_MODULES) * len(
+            generate.width_points("arith_rand", 32, 64, 42)
+        )
+        self.assertEqual(ff_fa, 320)
+        self.assertEqual(arithmetic_same, 224)
+        self.assertEqual(arithmetic_random, 448)
+        self.assertEqual(ff_fa + arithmetic_same + arithmetic_random, 992)
+
     def test_random_width_points_are_reproducible_and_non_diagonal(self):
         first = generate.width_points("arith_rand", 8, 20, 42)
         second = generate.width_points("arith_rand", 8, 20, 42)

@@ -37,8 +37,7 @@ FF_FA_MODULES = [
     "SDFF", "SDFFE", "SDFFCE",
 ]
 ARITH_MODULES = [
-    "ADD", "SUB", "MUL", "DIV", "MOD", "DIVFLOOR", "MODFLOOR",
-    "ALU", "MACC",
+    "ADD", "SUB", "MUL", "DIV", "MOD", "ALU", "MACC",
 ]
 GROUPS = ("ff_fa", "arith_same", "arith_rand")
 VECTOR_LEN = 5
