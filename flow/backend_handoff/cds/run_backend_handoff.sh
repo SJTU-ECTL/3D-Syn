@@ -88,7 +88,7 @@ run_logged "${stage_log_dir}/00_prepare_backend_netlist.log" \
   --flow-root "${FLOW_HOME}" \
   --v-in "${RESULTS_DIR}/base.v" \
   --partition "${RESULTS_DIR}/partition_from_flow.txt" \
-  "${cell_map_args[@]}" \
+  "${cell_map_args[@]+"${cell_map_args[@]}"}" \
   --v-out "${backend_input_v}"
 require_file "tier-qualified backend input netlist" "${backend_input_v}"
 
@@ -143,7 +143,7 @@ run_logged "${stage_log_dir}/03_generate_backend_views.log" \
   --def-in "${backend_def}" \
   --v-in "${backend_v}" \
   --partition "${backend_partition}" \
-  "${cell_map_args[@]}" \
+  "${cell_map_args[@]+"${cell_map_args[@]}"}" \
   --def-out "${fp_def}" \
   --v-out "${fp_v}"
 

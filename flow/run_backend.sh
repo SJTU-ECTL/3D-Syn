@@ -174,7 +174,9 @@ run_make_target() {
   fi
   write_state "${target}" running 0
   set +e
-  make "${make_args[@]}" "${target_args[@]}" "${target}"
+  make "${make_args[@]}" \
+    "${target_args[@]+"${target_args[@]}"}" \
+    "${target}"
   rc=$?
   set -e
   if ((rc != 0)); then
