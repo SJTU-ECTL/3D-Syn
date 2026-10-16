@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -31,6 +33,109 @@ class BaselineContractTests(unittest.TestCase):
         )
         self.assertNotIn("README_backend.sh", text)
         self.assertNotIn("TAIWEI_WORKFLOW_RUN_BACKEND", text)
+
+    def test_driver_forwards_2d_platform_and_keeps_3d_output_namespace(self) -> None:
+        platform_pairs = (
+            ("nangate45_3D", "nangate45"),
+            ("asap7_3D", "asap7"),
+            ("asap7_nangate45_3D", "asap7_nangate45"),
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir_name:
+            temp_dir = Path(temp_dir_name)
+            taiwei_home = temp_dir / "TaiWei"
+            flow_home = taiwei_home / "TaiWei-Pin-3D"
+            flow_home.mkdir(parents=True)
+            (flow_home / "Makefile").write_text("# test fixture\n", encoding="utf-8")
+
+            bin_dir = temp_dir / "bin"
+            bin_dir.mkdir()
+            make_log = temp_dir / "make.log"
+            fake_make = bin_dir / "make"
+            fake_make.write_text(
+                """#!/usr/bin/env bash
+set -euo pipefail
+printf 'CALL\\n' >> \"${BASELINE_TEST_MAKE_LOG}\"
+printf '%s\\n' \"$@\" >> \"${BASELINE_TEST_MAKE_LOG}\"
+results_dir=''
+for argument in \"$@\"; do
+  case \"${argument}\" in
+    RESULTS_DIR=*) results_dir=\"${argument#RESULTS_DIR=}\" ;;
+  esac
+done
+mkdir -p -- \"${results_dir}\"
+case \" $* \" in
+  *' ord-synth '*) printf 'module test; endmodule\\n' > \"${results_dir}/1_synth.v\" ;;
+  *' 3dsyn-baseline-genus '*)
+    printf 'module test; endmodule\\n' > \"${results_dir}/1_synth_netlist.v\"
+    printf 'create_clock -period 1 clk\\n' > \"${results_dir}/1_synth_netlist.sdc\"
+    ;;
+esac
+""",
+                encoding="utf-8",
+            )
+            fake_make.chmod(0o755)
+
+            fake_tool = bin_dir / "tool"
+            fake_tool.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            fake_tool.chmod(0o755)
+
+            design_config = temp_dir / "config2d.mk"
+            design_sdc = temp_dir / "constraint.sdc"
+            design_config.write_text("export DESIGN_NAME = test\n", encoding="utf-8")
+            design_sdc.write_text("create_clock -period 1 clk\n", encoding="utf-8")
+
+            environment = os.environ.copy()
+            environment["PATH"] = f"{bin_dir}:{environment['PATH']}"
+            environment["BASELINE_TEST_MAKE_LOG"] = str(make_log)
+            environment["LC_ALL"] = "C"
+            environment["LANG"] = "C"
+
+            for platform_3d, platform_2d in platform_pairs:
+                with self.subTest(platform=platform_3d):
+                    make_log.write_text("", encoding="utf-8")
+                    run_dir = temp_dir / f"run-{platform_3d}"
+                    subprocess.run(
+                        [
+                            str(BASELINE / "run_baseline_synth.sh"),
+                            "--taiwei-home",
+                            str(taiwei_home),
+                            "--platform",
+                            platform_3d,
+                            "--design",
+                            "test",
+                            "--run-dir",
+                            str(run_dir),
+                            "--yosys-bin",
+                            str(fake_tool),
+                            "--genus-bin",
+                            str(fake_tool),
+                            "--design-config",
+                            str(design_config),
+                            "--design-sdc",
+                            str(design_sdc),
+                        ],
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                        env=environment,
+                    )
+
+                    calls = make_log.read_text(encoding="utf-8").split("CALL\n")
+                    calls = [call for call in calls if call]
+                    self.assertEqual(len(calls), 2)
+                    for call in calls:
+                        self.assertIn(f"PLATFORM={platform_2d}\n", call)
+                    self.assertTrue(
+                        (
+                            run_dir
+                            / "results"
+                            / platform_3d
+                            / "test"
+                            / "baseline"
+                            / "1_synth.v"
+                        ).is_file()
+                    )
 
     def test_driver_exposes_complete_help(self) -> None:
         result = subprocess.run(

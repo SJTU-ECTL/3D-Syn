@@ -120,6 +120,8 @@ case "${synth_opt_mode}" in
   *) fail "--synth-opt-mode must be normal or low_effort: ${synth_opt_mode}" ;;
 esac
 
+synth_platform="${platform%_3D}"
+
 taiwei_home="$(realpath -m -- "${taiwei_home}")"
 taiwei_flow_home="${taiwei_home}/TaiWei-Pin-3D"
 run_dir="$(realpath -m -- "${run_dir}")"
@@ -161,6 +163,7 @@ mkdir -p -- "${log_dir}" "${objects_dir}" "${reports_dir}" "${results_dir}"
 common_make_args=(
   -C "${taiwei_flow_home}"
   -f "${taiwei_flow_home}/Makefile"
+  "PLATFORM=${synth_platform}"
   "DESIGN_CONFIG=${design_config}"
   "DESIGN_NICKNAME=${design}"
   "FLOW_VARIANT=${flow_variant}"
@@ -178,6 +181,7 @@ common_make_args=(
 )
 
 printf '[3D-Syn][baseline] Platform          : %s\n' "${platform}"
+printf '[3D-Syn][baseline] Synth platform    : %s\n' "${synth_platform}"
 printf '[3D-Syn][baseline] Design            : %s\n' "${design}"
 printf '[3D-Syn][baseline] Constraints       : %s\n' "${design_sdc}"
 printf '[3D-Syn][baseline] Synthesis effort  : %s\n' "${synth_opt_mode}"
