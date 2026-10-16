@@ -167,12 +167,14 @@ write_state() {
 
 run_make_target() {
   local target="$1"
+  shift
   local rc
-  local -a target_args=()
+  local state_name="${RUN_STATE_NAME:-${target}}"
+  local -a target_args=("$@")
   if [[ -n "${TIER_ALLOW_NET:-}" ]]; then
     target_args+=("TIER_ALLOW_NET=${TIER_ALLOW_NET}")
   fi
-  write_state "${target}" running 0
+  write_state "${state_name}" running 0
   set +e
   make "${make_args[@]}" \
     "${target_args[@]+"${target_args[@]}"}" \
@@ -180,10 +182,61 @@ run_make_target() {
   rc=$?
   set -e
   if ((rc != 0)); then
-    write_state "${target}" failed "${rc}"
+    write_state "${state_name}" failed "${rc}"
     return "${rc}"
   fi
-  write_state "${target}" ok 0
+  write_state "${state_name}" ok 0
+}
+
+normalize_cds_handoff() {
+  local tier="$1" label="$2" def_in="$3" v_in="$4" sdc_in="$5"
+  local normalize_dir="${objects_dir}/3dsyn/row_handoffs"
+  local def_out="${def_in}.3dsyn-normalized-${label}.tmp"
+  local audit_def="${normalize_dir}/${label}.input.def"
+
+  [[ -s "${def_in}" ]] || fail "Missing DEF before ROW normalization: ${def_in}"
+  [[ -s "${v_in}" ]] || fail "Missing netlist before ROW normalization: ${v_in}"
+  [[ -s "${sdc_in}" ]] || fail "Missing SDC before ROW normalization: ${sdc_in}"
+  mkdir -p "${normalize_dir}"
+
+  printf '[3D-Syn][CDS] Normalize ROW handoff label=%s tier=%s\n' "${label}" "${tier}"
+  RUN_STATE_NAME="normalize-${label}" run_make_target \
+    3dsyn-cds-normalize-tier-handoff \
+    "SYN3D_NORMALIZE_TIER=${tier}" \
+    "SYN3D_NORMALIZE_DEF_IN=${def_in}" \
+    "SYN3D_NORMALIZE_V_IN=${v_in}" \
+    "SYN3D_NORMALIZE_SDC_IN=${sdc_in}" \
+    "SYN3D_NORMALIZE_DEF_OUT=${def_out}" \
+    "SYN3D_NORMALIZE_AUDIT_DEF=${audit_def}" \
+    "SYN3D_NORMALIZE_LOG_NAME=normalize_${label}_rows"
+}
+
+run_cds_cts() {
+  local aggregate_log aggregate_cadence_log
+
+  normalize_cds_handoff owner cts_owner_tree \
+    "${results_dir}/3_place.def" \
+    "${results_dir}/3_place.v" \
+    "${results_dir}/3_place.sdc"
+  run_make_target cds-cts-owner-tree
+
+  normalize_cds_handoff receive cts_receive_opt \
+    "${results_dir}/4_0_cts_owner_tree.def" \
+    "${results_dir}/4_0_cts_owner_tree.v" \
+    "${results_dir}/4_0_cts_owner_tree.sdc"
+  run_make_target cds-cts-receive-opt
+  run_make_target cds-cts-finalize
+
+  aggregate_log="${log_dir}/4_1_cts.log"
+  aggregate_cadence_log="${log_dir}/cadence_innovus_3d_cts.log"
+  cat "${log_dir}/4_0_cts_owner_tree.log" \
+      "${log_dir}/4_1_cts_receive_opt.log" \
+      "${log_dir}/4_3_cts_finalize.log" > "${aggregate_log}.tmp"
+  mv -f -- "${aggregate_log}.tmp" "${aggregate_log}"
+  cat "${log_dir}/cadence_innovus_3d_cts_owner_tree.log" \
+      "${log_dir}/cadence_innovus_3d_cts_receive_opt.log" \
+      "${log_dir}/cadence_innovus_3d_cts_finalize.log" > "${aggregate_cadence_log}.tmp"
+  mv -f -- "${aggregate_cadence_log}.tmp" "${aggregate_cadence_log}"
 }
 
 run_stage() {
@@ -193,9 +246,53 @@ run_stage() {
     for ((iteration = 1; iteration <= ${OUTER_ITERATIONS:-1}; iteration++)); do
       printf '[3D-Syn] staged preCTS iteration %d/%d\n' \
         "${iteration}" "${OUTER_ITERATIONS:-1}"
+      if [[ "${BACKEND}" == cds ]]; then
+        normalize_cds_handoff upper "prects_upper_${iteration}" \
+          "${results_dir}/${DESIGN}_3D.tmp.def" \
+          "${results_dir}/${DESIGN}_3D.tmp.v" \
+          "${results_dir}/2_floorplan.sdc"
+      fi
       TIER_ALLOW_NET=upper-only run_make_target "${BACKEND}-place-upper"
+      if [[ "${BACKEND}" == cds ]]; then
+        normalize_cds_handoff bottom "prects_bottom_${iteration}" \
+          "${results_dir}/${DESIGN}_3D.tmp.def" \
+          "${results_dir}/${DESIGN}_3D.tmp.v" \
+          "${results_dir}/2_floorplan.sdc"
+      fi
       TIER_ALLOW_NET=bottom-only run_make_target "${BACKEND}-place-bottom"
     done
+  elif [[ "${stage}" == cds-place-init ]]; then
+    normalize_cds_handoff bottom place_init \
+      "${results_dir}/2_floorplan.def" \
+      "${results_dir}/2_floorplan.v" \
+      "${results_dir}/2_floorplan.sdc"
+    run_make_target "${stage}"
+  elif [[ "${stage}" == cds-place-init-upper ]]; then
+    normalize_cds_handoff upper place_init_upper \
+      "${results_dir}/${DESIGN}_3D.tmp.def" \
+      "${results_dir}/${DESIGN}_3D.tmp.v" \
+      "${results_dir}/2_floorplan.sdc"
+    run_make_target "${stage}"
+  elif [[ "${stage}" == cds-place-init-bottom ]]; then
+    normalize_cds_handoff bottom place_init_bottom \
+      "${results_dir}/${DESIGN}_3D.tmp.def" \
+      "${results_dir}/${DESIGN}_3D.tmp.v" \
+      "${results_dir}/2_floorplan.sdc"
+    run_make_target "${stage}"
+  elif [[ "${stage}" == cds-legalize-upper ]]; then
+    normalize_cds_handoff upper legalize_upper \
+      "${results_dir}/${DESIGN}_3D.lg.def" \
+      "${results_dir}/${DESIGN}_3D.lg.v" \
+      "${results_dir}/2_floorplan.sdc"
+    run_make_target "${stage}"
+  elif [[ "${stage}" == cds-legalize-bottom ]]; then
+    normalize_cds_handoff bottom legalize_bottom \
+      "${results_dir}/${DESIGN}_3D.lg.def" \
+      "${results_dir}/${DESIGN}_3D.lg.v" \
+      "${results_dir}/2_floorplan.sdc"
+    run_make_target "${stage}"
+  elif [[ "${stage}" == cds-cts ]]; then
+    run_cds_cts
   else
     printf '[3D-Syn] Running backend stage %s\n' "${stage}"
     run_make_target "${stage}"

@@ -113,6 +113,7 @@ SYN3D_ORD_PREPLACE_TCL ?= $(SYN3D_BACKEND_DIR)/ord/floorplan.tcl
 SYN3D_ORD_FLOORPLAN_3D_TCL ?= $(SYN3D_BACKEND_DIR)/ord/floorplan_3d.tcl
 SYN3D_CDS_PREPLACE_TCL ?= $(SYN3D_BACKEND_DIR)/cds/innovus_preplace.tcl
 SYN3D_CDS_FLOORPLAN_3D_TCL ?= $(SYN3D_BACKEND_DIR)/cds/innovus_3d_floorplan.tcl
+SYN3D_CDS_NORMALIZE_TIER_ROWS_TCL ?= $(SYN3D_BACKEND_DIR)/cds/normalize_tier_rows.tcl
 
 # Compatibility names consumed by the current 3D-Syn reference scripts.
 SYN3D_GENUS_OPT_MODE ?= $(SYNTH_OPT_MODE)
@@ -128,6 +129,7 @@ export PYTHON_EXE OPENROAD_EXE GENUS_EXE INNOVUS_EXE
 export DESIGN_CONFIG DESIGN_CONFIG_2D DESIGN_CONFIG_3D DESIGN_SDC
 export SYNTH_OPT_MODE PREPLACE_OPT FIXED_CORE_AREA CORE_ASPECT_RATIO
 export SYN3D_GENUS_OPT_MODE SYN3D_BACKEND_PREPLACE_OPT
+export SYN3D_CDS_NORMALIZE_TIER_ROWS_TCL
 export SYN3D_PLATFORM SYN3D_PLATFORM_DIR SYN3D_COARSE_UNIT_KEEP_MODE
 export SYN3D_COARSE_LIB_FILES SYN3D_COARSE_DFF_LIB_FILE
 export SYN3D_COARSE_ABC_DRIVER_CELL SYN3D_COARSE_ABC_LOAD_IN_FF
@@ -246,6 +248,49 @@ export SYN3D_HBT_R_OHM SYN3D_HBT_C_FF
 # reuse its tool commands, platform variables, log wrapper, and stage outputs.
 .PHONY: 3dsyn-ord-preplace 3dsyn-cds-preplace
 .PHONY: 3dsyn-ord-3d-floorplan 3dsyn-cds-3d-floorplan
+.PHONY: 3dsyn-cds-normalize-tier-handoff
+
+3dsyn-cds-normalize-tier-handoff:
+	@$(call _mkstdirs)
+	@test -n "$(SYN3D_NORMALIZE_TIER)" || { \
+	  printf '[3D-Syn][CDS] Missing SYN3D_NORMALIZE_TIER\n' >&2; exit 2; }
+	@test -s "$(SYN3D_NORMALIZE_DEF_IN)" || { \
+	  printf '[3D-Syn][CDS] Missing normalization DEF: %s\n' "$(SYN3D_NORMALIZE_DEF_IN)" >&2; exit 2; }
+	@test -s "$(SYN3D_NORMALIZE_V_IN)" || { \
+	  printf '[3D-Syn][CDS] Missing normalization netlist: %s\n' "$(SYN3D_NORMALIZE_V_IN)" >&2; exit 2; }
+	@test -s "$(SYN3D_NORMALIZE_SDC_IN)" || { \
+	  printf '[3D-Syn][CDS] Missing normalization SDC: %s\n' "$(SYN3D_NORMALIZE_SDC_IN)" >&2; exit 2; }
+	@test -n "$(SYN3D_NORMALIZE_DEF_OUT)" || { \
+	  printf '[3D-Syn][CDS] Missing SYN3D_NORMALIZE_DEF_OUT\n' >&2; exit 2; }
+	@test -n "$(SYN3D_NORMALIZE_AUDIT_DEF)" || { \
+	  printf '[3D-Syn][CDS] Missing SYN3D_NORMALIZE_AUDIT_DEF\n' >&2; exit 2; }
+ifeq ($(strip $(UPPER_SITE)),$(strip $(BOTTOM_SITE)))
+	@printf '[3D-Syn][CDS] ROW normalization skipped: homogeneous site %s\n' \
+	  "$(UPPER_SITE)"
+else
+	@test "$$(realpath -m -- "$(SYN3D_NORMALIZE_DEF_IN)")" != \
+	  "$$(realpath -m -- "$(SYN3D_NORMALIZE_DEF_OUT)")" || { \
+	  printf '[3D-Syn][CDS] Normalization output must differ from input: %s\n' \
+	    "$(SYN3D_NORMALIZE_DEF_IN)" >&2; exit 2; }
+	@mkdir -p -- "$(dir $(SYN3D_NORMALIZE_AUDIT_DEF))"
+	@cp -p -- "$(SYN3D_NORMALIZE_DEF_IN)" "$(SYN3D_NORMALIZE_AUDIT_DEF)"
+	@rm -f -- "$(SYN3D_NORMALIZE_DEF_OUT)"
+	$(call _run_with_tmp_log,$(LOG_DIR)/$(SYN3D_NORMALIZE_LOG_NAME).log,/usr/bin/env \
+	  SYN3D_NORMALIZE_TIER="$(SYN3D_NORMALIZE_TIER)" \
+	  SYN3D_NORMALIZE_DEF_IN="$(SYN3D_NORMALIZE_DEF_IN)" \
+	  SYN3D_NORMALIZE_V_IN="$(SYN3D_NORMALIZE_V_IN)" \
+	  SYN3D_NORMALIZE_SDC_IN="$(SYN3D_NORMALIZE_SDC_IN)" \
+	  SYN3D_NORMALIZE_DEF_OUT="$(SYN3D_NORMALIZE_DEF_OUT)" \
+	  LEF_FILES="$(if $(filter upper,$(SYN3D_NORMALIZE_TIER)),$(LEF_FILES_BOTTOM_COVER),$(if $(filter bottom,$(SYN3D_NORMALIZE_TIER)),$(LEF_FILES_UPPER_COVER),$(if $(filter owner,$(SYN3D_NORMALIZE_TIER)),$(LEF_FILES_CTS_OWNER),$(LEF_FILES_CTS_RECEIVE))))" \
+	  $(TIME_CMD) $(INNOVUS_CMD) -overwrite \
+	    -log $(LOG_DIR)/cadence_$(SYN3D_NORMALIZE_LOG_NAME).log \
+	    -files $(SYN3D_CDS_NORMALIZE_TIER_ROWS_TCL))
+	@test -s "$(SYN3D_NORMALIZE_DEF_OUT)" || { \
+	  printf '[3D-Syn][CDS] Normalizer produced no DEF: %s\n' "$(SYN3D_NORMALIZE_DEF_OUT)" >&2; exit 2; }
+	@mv -f -- "$(SYN3D_NORMALIZE_DEF_OUT)" "$(SYN3D_NORMALIZE_DEF_IN)"
+	@printf '[3D-Syn][CDS] Published normalized ROW handoff: tier=%s def=%s\n' \
+	  "$(SYN3D_NORMALIZE_TIER)" "$(SYN3D_NORMALIZE_DEF_IN)"
+endif
 
 3dsyn-ord-preplace:
 	@printf '[3D-Syn][ORD] Pre-place with PREPLACE_OPT=%s\n' "$(PREPLACE_OPT)"
