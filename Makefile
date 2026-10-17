@@ -15,9 +15,11 @@ STOP_STAGE ?= backend-handoff
 BACKEND_START_STAGE ?= 3d-floorplan
 BACKEND_STOP_STAGE ?= final
 OUTER_ITERATIONS ?= 1
+BASELINE_STOP_STAGE ?= final
 
 export START_STAGE STOP_STAGE BACKEND_START_STAGE BACKEND_STOP_STAGE
 export OUTER_ITERATIONS
+export BASELINE_STOP_STAGE
 
 .PHONY: help plugin run baseline
 .PHONY: _run-frontend _run-backend _run-all
@@ -27,7 +29,7 @@ help:
 	  '3D-Syn release targets:' \
 	  '  plugin     Build the 3D-Syn Yosys plugin.' \
 	  '  run        Run the complete 3D-Syn frontend and backend flow.' \
-	  '  baseline   Run the TaiWei-Yosys-to-Genus comparison baseline.' \
+	  '  baseline   Run the TaiWei comparison baseline.' \
 	  '  help       Show this summary.' \
 	  '' \
 	  'Recommended entry points:' \
@@ -50,14 +52,21 @@ baseline:
 	  --taiwei-home "$(TAIWEI_HOME)" \
 	  --platform "$(PLATFORM)" \
 	  --design "$(DESIGN)" \
+	  --backend "$(BACKEND)" \
 	  --run-dir "$(RUN_DIR)" \
 	  --yosys-bin "$(YOSYS_EXE)" \
+	  --openroad-bin "$(OPENROAD_EXE)" \
 	  --genus-bin "$(GENUS_EXE)" \
+	  --innovus-bin "$(INNOVUS_EXE)" \
+	  --python-bin "$(PYTHON_EXE)" \
 	  --design-config "$(DESIGN_CONFIG_2D)" \
+	  --design-config-3d "$(DESIGN_CONFIG_3D)" \
 	  --design-sdc "$(DESIGN_SDC)" \
 	  --flow-variant "$(FLOW_VARIANT)" \
 	  --num-cores "$(NUM_CORES)" \
-	  --synth-opt-mode "$(SYNTH_OPT_MODE)"
+	  --synth-opt-mode "$(SYNTH_OPT_MODE)" \
+	  --outer-iterations "$(OUTER_ITERATIONS)" \
+	  --stop-stage "$(BASELINE_STOP_STAGE)"
 
 _run-frontend:
 	@bash "$(SYN3D_FLOW_DIR)/run_frontend.sh" --stage all

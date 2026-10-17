@@ -58,8 +58,11 @@ class ReleaseContractTests(unittest.TestCase):
 
         baseline = (ROOT / "run_baseline.sh").read_text(encoding="utf-8")
         baseline_config = baseline.split("# End user configuration", 1)[0]
+        self.assertIn('BACKEND="cds"', baseline_config)
         self.assertIn('RUN_TAG="example_baseline"', baseline_config)
         self.assertIn('SYNTH_OPT_MODE="low_effort"', baseline_config)
+        self.assertIn('case "${BACKEND}" in ord|cds)', baseline)
+        self.assertIn('"BASELINE_STOP_STAGE=${BASELINE_STOP_STAGE}"', baseline)
 
     def test_direct_hbt_defaults_reach_per_tier_synthesis(self) -> None:
         overlay = (ROOT / "taiwei" / "3dsyn.mk").read_text(encoding="utf-8")
