@@ -161,10 +161,8 @@ python3 area_model/data_generation/04_run_pnr.py arith_same \
 
 Append `--target ADD 2 2 2` to either command for a single case.
 
-The commands above define the published 16-core configuration: synthesis uses
-16 single-process workers, feature extraction uses 16 process workers, and P&R
-uses four OpenROAD processes with four threads per process. The worker and
-thread options remain configurable for machines with a different CPU budget.
+> **Note:** P&R uses `--placement-density 2.0` by default. If global routing
+> fails because of congestion, rerun step 04 with `--placement-density 1.0`.
 
 ## 05: build datasets and splits
 
