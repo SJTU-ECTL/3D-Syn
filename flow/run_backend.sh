@@ -59,13 +59,19 @@ status_dir="${objects_dir}/3dsyn/backend_status"
 
 handoff_validator="${SYN3D_ROOT}/flow/backend_handoff/validate_backend_handoff.py"
 [[ -f "${handoff_validator}" ]] || fail "Backend handoff validator is unavailable: ${handoff_validator}"
+handoff_manifest="${results_dir}/backend_handoff_manifest.json"
 "${PYTHON_EXE}" "${handoff_validator}" \
-  --manifest "${results_dir}/backend_handoff_manifest.json" \
+  --manifest "${handoff_manifest}" \
   --results-dir "${results_dir}" \
   --design-config "${DESIGN_CONFIG_3D}" \
   --platform "${PLATFORM}" \
   --flow-variant "${FLOW_VARIANT}" \
   --backend "${BACKEND}"
+backend_design_name="$("${PYTHON_EXE}" -c \
+  'import json, pathlib, sys; print(json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))["design"])' \
+  "${handoff_manifest}")" || fail "Cannot resolve the validated backend design name."
+[[ "${backend_design_name}" =~ ^[A-Za-z0-9_.-]+$ ]] || \
+  fail "Invalid backend design name: ${backend_design_name}"
 if ((validate_handoff_only)); then
   printf '[3D-Syn] Backend handoff validation-only completed: %s\n' "${results_dir}"
   exit 0
@@ -248,15 +254,15 @@ run_stage() {
         "${iteration}" "${OUTER_ITERATIONS:-1}"
       if [[ "${BACKEND}" == cds ]]; then
         normalize_cds_handoff upper "prects_upper_${iteration}" \
-          "${results_dir}/${DESIGN}_3D.tmp.def" \
-          "${results_dir}/${DESIGN}_3D.tmp.v" \
+          "${results_dir}/${backend_design_name}_3D.tmp.def" \
+          "${results_dir}/${backend_design_name}_3D.tmp.v" \
           "${results_dir}/2_floorplan.sdc"
       fi
       TIER_ALLOW_NET=upper-only run_make_target "${BACKEND}-place-upper"
       if [[ "${BACKEND}" == cds ]]; then
         normalize_cds_handoff bottom "prects_bottom_${iteration}" \
-          "${results_dir}/${DESIGN}_3D.tmp.def" \
-          "${results_dir}/${DESIGN}_3D.tmp.v" \
+          "${results_dir}/${backend_design_name}_3D.tmp.def" \
+          "${results_dir}/${backend_design_name}_3D.tmp.v" \
           "${results_dir}/2_floorplan.sdc"
       fi
       TIER_ALLOW_NET=bottom-only run_make_target "${BACKEND}-place-bottom"
@@ -269,26 +275,26 @@ run_stage() {
     run_make_target "${stage}"
   elif [[ "${stage}" == cds-place-init-upper ]]; then
     normalize_cds_handoff upper place_init_upper \
-      "${results_dir}/${DESIGN}_3D.tmp.def" \
-      "${results_dir}/${DESIGN}_3D.tmp.v" \
+      "${results_dir}/${backend_design_name}_3D.tmp.def" \
+      "${results_dir}/${backend_design_name}_3D.tmp.v" \
       "${results_dir}/2_floorplan.sdc"
     run_make_target "${stage}"
   elif [[ "${stage}" == cds-place-init-bottom ]]; then
     normalize_cds_handoff bottom place_init_bottom \
-      "${results_dir}/${DESIGN}_3D.tmp.def" \
-      "${results_dir}/${DESIGN}_3D.tmp.v" \
+      "${results_dir}/${backend_design_name}_3D.tmp.def" \
+      "${results_dir}/${backend_design_name}_3D.tmp.v" \
       "${results_dir}/2_floorplan.sdc"
     run_make_target "${stage}"
   elif [[ "${stage}" == cds-legalize-upper ]]; then
     normalize_cds_handoff upper legalize_upper \
-      "${results_dir}/${DESIGN}_3D.lg.def" \
-      "${results_dir}/${DESIGN}_3D.lg.v" \
+      "${results_dir}/${backend_design_name}_3D.lg.def" \
+      "${results_dir}/${backend_design_name}_3D.lg.v" \
       "${results_dir}/2_floorplan.sdc"
     run_make_target "${stage}"
   elif [[ "${stage}" == cds-legalize-bottom ]]; then
     normalize_cds_handoff bottom legalize_bottom \
-      "${results_dir}/${DESIGN}_3D.lg.def" \
-      "${results_dir}/${DESIGN}_3D.lg.v" \
+      "${results_dir}/${backend_design_name}_3D.lg.def" \
+      "${results_dir}/${backend_design_name}_3D.lg.v" \
       "${results_dir}/2_floorplan.sdc"
     run_make_target "${stage}"
   elif [[ "${stage}" == cds-cts ]]; then
