@@ -48,7 +48,7 @@ SYN3D_COARSE_UNIT_KEEP_MODE ?= all
 # one ABC invocation, which is not a valid mapping contract. Keep this as an
 # overlay variable so callers can replace it without editing design configs.
 ifeq ($(SYN3D_PLATFORM),asap7_nangate45_3D)
-SYN3D_COARSE_LIB_FILES ?= $(TAIWEI_FLOW_HOME)/platforms/asap7_nangate45/lib/NangateOpenCellLibrary_typical.processed.lib $(ADDITIONAL_LIBS)
+SYN3D_COARSE_LIB_FILES := $(TAIWEI_FLOW_HOME)/platforms/asap7_nangate45/lib/NangateOpenCellLibrary_typical.processed.lib $(ADDITIONAL_LIBS)
 SYN3D_COARSE_DFF_LIB_FILE ?= $(TAIWEI_FLOW_HOME)/platforms/asap7_nangate45/lib/NangateOpenCellLibrary_typical.processed.lib
 SYN3D_COARSE_ABC_DRIVER_CELL ?= BUF_X1
 SYN3D_COARSE_ABC_LOAD_IN_FF ?= 3.898
