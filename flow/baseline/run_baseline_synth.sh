@@ -252,6 +252,10 @@ make_3d_args=(
   "DESIGN_CONFIG=${design_config_3d}"
   "USE_FLOW=${use_flow}"
 )
+make_3d_overlay_args=(
+  "${make_3d_args[@]}"
+  -f "${syn3d_root}/taiwei/3dsyn.mk"
+)
 
 if [[ "${backend}" == ord ]]; then
   physical_stages=(
@@ -337,16 +341,122 @@ printf '[3D-Syn][baseline] TaiWei tier partition\n'
 make "${make_2d_args[@]}" "${backend}-tier-partition"
 require_file 'TaiWei tier partition' "${results_dir}/partition.txt"
 
+resolve_unique_stage_def() {
+  local suffix="$1"
+  local match=""
+  local path
+  for path in "${results_dir}"/*"${suffix}"; do
+    [[ -e "${path}" ]] || continue
+    [[ -z "${match}" ]] || fail "Multiple stage DEF files match *${suffix}: ${match}, ${path}"
+    match="${path}"
+  done
+  [[ -n "${match}" ]] || fail "No stage DEF file matches *${suffix} under ${results_dir}"
+  printf '%s\n' "${match}"
+}
+
+normalize_cds_handoff() {
+  local tier="$1" label="$2" def_in="$3" v_in="$4" sdc_in="$5"
+  local normalize_dir="${objects_dir}/baseline/row_handoffs"
+  local def_out="${def_in}.baseline-normalized-${label}.tmp"
+  local audit_def="${normalize_dir}/${label}.input.def"
+
+  require_file 'DEF before ROW normalization' "${def_in}"
+  require_file 'netlist before ROW normalization' "${v_in}"
+  require_file 'constraints before ROW normalization' "${sdc_in}"
+  mkdir -p -- "${normalize_dir}"
+
+  printf '[3D-Syn][baseline][CDS] Normalize ROW handoff label=%s tier=%s\n' \
+    "${label}" "${tier}"
+  make "${make_3d_overlay_args[@]}" \
+    "SYN3D_NORMALIZE_TIER=${tier}" \
+    "SYN3D_NORMALIZE_DEF_IN=${def_in}" \
+    "SYN3D_NORMALIZE_V_IN=${v_in}" \
+    "SYN3D_NORMALIZE_SDC_IN=${sdc_in}" \
+    "SYN3D_NORMALIZE_DEF_OUT=${def_out}" \
+    "SYN3D_NORMALIZE_AUDIT_DEF=${audit_def}" \
+    "SYN3D_NORMALIZE_LOG_NAME=normalize_${label}_rows" \
+    3dsyn-cds-normalize-tier-handoff
+}
+
+run_cds_cts() {
+  local aggregate_log="${log_dir}/4_1_cts.log"
+  local aggregate_cadence_log="${log_dir}/cadence_innovus_3d_cts.log"
+
+  normalize_cds_handoff owner cts_owner_tree \
+    "${results_dir}/3_place.def" \
+    "${results_dir}/3_place.v" \
+    "${results_dir}/3_place.sdc"
+  make "${make_3d_args[@]}" cds-cts-owner-tree
+
+  normalize_cds_handoff receive cts_receive_opt \
+    "${results_dir}/4_0_cts_owner_tree.def" \
+    "${results_dir}/4_0_cts_owner_tree.v" \
+    "${results_dir}/4_0_cts_owner_tree.sdc"
+  make "${make_3d_args[@]}" cds-cts-receive-opt
+  make "${make_3d_args[@]}" cds-cts-finalize
+
+  cat "${log_dir}/4_0_cts_owner_tree.log" \
+      "${log_dir}/4_1_cts_receive_opt.log" \
+      "${log_dir}/4_3_cts_finalize.log" > "${aggregate_log}.tmp"
+  mv -f -- "${aggregate_log}.tmp" "${aggregate_log}"
+  cat "${log_dir}/cadence_innovus_3d_cts_owner_tree.log" \
+      "${log_dir}/cadence_innovus_3d_cts_receive_opt.log" \
+      "${log_dir}/cadence_innovus_3d_cts_finalize.log" > "${aggregate_cadence_log}.tmp"
+  mv -f -- "${aggregate_cadence_log}.tmp" "${aggregate_cadence_log}"
+}
+
 run_physical_stage() {
   local stage="$1"
-  local iteration
+  local iteration stage_def stage_netlist
   if [[ "${stage}" == staged-prects ]]; then
     for ((iteration = 1; iteration <= outer_iterations; iteration++)); do
       printf '[3D-Syn][baseline] TaiWei staged preCTS iteration %d/%d\n' \
         "${iteration}" "${outer_iterations}"
+      if [[ "${backend}" == cds ]]; then
+        stage_def="$(resolve_unique_stage_def '_3D.tmp.def')"
+        stage_netlist="${stage_def%.def}.v"
+        normalize_cds_handoff upper "prects_upper_${iteration}" \
+          "${stage_def}" "${stage_netlist}" "${results_dir}/2_floorplan.sdc"
+      fi
       make "${make_3d_args[@]}" "TIER_ALLOW_NET=upper-only" "${backend}-place-upper"
+      if [[ "${backend}" == cds ]]; then
+        stage_def="$(resolve_unique_stage_def '_3D.tmp.def')"
+        stage_netlist="${stage_def%.def}.v"
+        normalize_cds_handoff bottom "prects_bottom_${iteration}" \
+          "${stage_def}" "${stage_netlist}" "${results_dir}/2_floorplan.sdc"
+      fi
       make "${make_3d_args[@]}" "TIER_ALLOW_NET=bottom-only" "${backend}-place-bottom"
     done
+  elif [[ "${stage}" == cds-place-init ]]; then
+    normalize_cds_handoff bottom place_init \
+      "${results_dir}/2_floorplan.def" \
+      "${results_dir}/2_floorplan.v" \
+      "${results_dir}/2_floorplan.sdc"
+    make "${make_3d_args[@]}" "${stage}"
+  elif [[ "${stage}" == cds-place-init-upper || "${stage}" == cds-place-init-bottom ]]; then
+    stage_def="$(resolve_unique_stage_def '_3D.tmp.def')"
+    stage_netlist="${stage_def%.def}.v"
+    if [[ "${stage}" == cds-place-init-upper ]]; then
+      normalize_cds_handoff upper place_init_upper \
+        "${stage_def}" "${stage_netlist}" "${results_dir}/2_floorplan.sdc"
+    else
+      normalize_cds_handoff bottom place_init_bottom \
+        "${stage_def}" "${stage_netlist}" "${results_dir}/2_floorplan.sdc"
+    fi
+    make "${make_3d_args[@]}" "${stage}"
+  elif [[ "${stage}" == cds-legalize-upper || "${stage}" == cds-legalize-bottom ]]; then
+    stage_def="$(resolve_unique_stage_def '_3D.lg.def')"
+    stage_netlist="${stage_def%.def}.v"
+    if [[ "${stage}" == cds-legalize-upper ]]; then
+      normalize_cds_handoff upper legalize_upper \
+        "${stage_def}" "${stage_netlist}" "${results_dir}/2_floorplan.sdc"
+    else
+      normalize_cds_handoff bottom legalize_bottom \
+        "${stage_def}" "${stage_netlist}" "${results_dir}/2_floorplan.sdc"
+    fi
+    make "${make_3d_args[@]}" "${stage}"
+  elif [[ "${stage}" == cds-cts ]]; then
+    run_cds_cts
   else
     printf '[3D-Syn][baseline] TaiWei stage %s\n' "${stage}"
     if [[ "${backend}" == cds && "${platform}" == asap7_nangate45_3D && "${stage}" == cds-pre ]]; then

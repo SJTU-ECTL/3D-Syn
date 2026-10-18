@@ -224,6 +224,29 @@ esac
         ):
             self.assertIn(retained_layer, rc_text)
 
+    def test_cds_tier_transitions_normalize_rows(self) -> None:
+        driver = (BASELINE / "run_baseline_synth.sh").read_text(encoding="utf-8")
+
+        self.assertIn("3dsyn-cds-normalize-tier-handoff", driver)
+        for call in (
+            "normalize_cds_handoff bottom place_init",
+            "normalize_cds_handoff upper place_init_upper",
+            "normalize_cds_handoff bottom place_init_bottom",
+            'normalize_cds_handoff upper "prects_upper_${iteration}"',
+            'normalize_cds_handoff bottom "prects_bottom_${iteration}"',
+            "normalize_cds_handoff upper legalize_upper",
+            "normalize_cds_handoff bottom legalize_bottom",
+            "normalize_cds_handoff owner cts_owner_tree",
+            "normalize_cds_handoff receive cts_receive_opt",
+        ):
+            self.assertIn(call, driver)
+        for target in (
+            "cds-cts-owner-tree",
+            "cds-cts-receive-opt",
+            "cds-cts-finalize",
+        ):
+            self.assertIn(target, driver)
+
     def test_genus_consumes_only_the_yosys_netlist(self) -> None:
         text = (BASELINE / "run_genus_on_netlist.tcl").read_text(encoding="utf-8")
         self.assertIn("read_hdl -sv $NETLIST_IN", text)
