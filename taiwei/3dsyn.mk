@@ -24,6 +24,7 @@ AREA_MODE ?= gnn
 FIXED_UTIL ?=
 SYNTH_OPT_MODE ?= low_effort
 PREPLACE_OPT ?= 0
+TRITONPART_TIMING_AWARE ?= 0
 FIXED_CORE_AREA ?=
 CORE_ASPECT_RATIO ?=
 PYTHON_EXE ?= $(SYN3D_ROOT)/flow/env_isolation/python_launcher.sh
@@ -114,6 +115,7 @@ SYN3D_ORD_FLOORPLAN_3D_TCL ?= $(SYN3D_BACKEND_DIR)/ord/floorplan_3d.tcl
 SYN3D_CDS_PREPLACE_TCL ?= $(SYN3D_BACKEND_DIR)/cds/innovus_preplace.tcl
 SYN3D_CDS_FLOORPLAN_3D_TCL ?= $(SYN3D_BACKEND_DIR)/cds/innovus_3d_floorplan.tcl
 SYN3D_CDS_NORMALIZE_TIER_ROWS_TCL ?= $(SYN3D_BACKEND_DIR)/cds/normalize_tier_rows.tcl
+SYN3D_TIER_PARTITION_TCL ?= $(SYN3D_FLOW_DIR)/coarse_partition/tier_partition_overlay.tcl
 
 # Compatibility names consumed by the current 3D-Syn reference scripts.
 SYN3D_GENUS_OPT_MODE ?= $(SYNTH_OPT_MODE)
@@ -127,9 +129,11 @@ export PLATFORM DESIGN FLOW_VARIANT BACKEND RUN_DIR NUM_CORES
 export AREA_MODE FIXED_UTIL CHECKPOINT_ROOT YOSYS_PLUGIN YOSYS_EXE YOSYS_CONFIG
 export PYTHON_EXE OPENROAD_EXE GENUS_EXE INNOVUS_EXE
 export DESIGN_CONFIG DESIGN_CONFIG_2D DESIGN_CONFIG_3D DESIGN_SDC
-export SYNTH_OPT_MODE PREPLACE_OPT FIXED_CORE_AREA CORE_ASPECT_RATIO
+export SYNTH_OPT_MODE PREPLACE_OPT TRITONPART_TIMING_AWARE
+export FIXED_CORE_AREA CORE_ASPECT_RATIO
 export SYN3D_GENUS_OPT_MODE SYN3D_BACKEND_PREPLACE_OPT
 export SYN3D_CDS_NORMALIZE_TIER_ROWS_TCL
+export SYN3D_TIER_PARTITION_TCL
 export SYN3D_PLATFORM SYN3D_PLATFORM_DIR SYN3D_COARSE_UNIT_KEEP_MODE
 export SYN3D_COARSE_LIB_FILES SYN3D_COARSE_DFF_LIB_FILE
 export SYN3D_COARSE_ABC_DRIVER_CELL SYN3D_COARSE_ABC_LOAD_IN_FF
@@ -144,6 +148,7 @@ export SYN3D_HBT_R_OHM SYN3D_HBT_C_FF
 # setup while running only repository-local 3D-Syn stage implementations.
 .PHONY: 3dsyn-coarse-synth 3dsyn-ord-coarse-partition
 .PHONY: 3dsyn-cds-coarse-partition 3dsyn-per-tier-synth
+.PHONY: 3dsyn-ord-tier-partition 3dsyn-cds-tier-partition
 .PHONY: 3dsyn-ord-backend-handoff 3dsyn-cds-backend-handoff
 
 3dsyn-coarse-synth: prep-libs
@@ -195,6 +200,22 @@ export SYN3D_HBT_R_OHM SYN3D_HBT_C_FF
 	  ADDITIONAL_LEFS="$(ADDITIONAL_LEFS)" \
 	  ADDITIONAL_LIBS="$(ADDITIONAL_LIBS)" \
 	  $(TIME_CMD) bash "$(SYN3D_BASELINE_DIR)/../coarse_partition/run_cds_coarse_partition.sh")
+
+3dsyn-ord-tier-partition:
+	@echo "[3D-Syn][ORD] Tier partition"
+	@$(call _mkstdirs)
+	$(call _run_with_tmp_log,$(LOG_DIR)/2_tritonpart.log,$(OPENROAD_CMD) $(SYN3D_TIER_PARTITION_TCL))
+	@echo "[3D-Syn][ORD] Copy 2D artifacts to $(3D_PLATFORM)"
+	@mkdir -p $(WORK_HOME)/results/$(3D_PLATFORM)/$(DESIGN_NICKNAME)/$(FLOW_VARIANT)
+	@cp -rf $(RESULTS_DIR)/* $(WORK_HOME)/results/$(3D_PLATFORM)/$(DESIGN_NICKNAME)/$(FLOW_VARIANT)/ || true
+
+3dsyn-cds-tier-partition:
+	@echo "[3D-Syn][CDS] Build OpenDB handoff for TritonPart"
+	@$(call _mkstdirs)
+	$(call _run_with_tmp_log,$(LOG_DIR)/2_2_cds_partition_handoff.log,$(TIME_CMD) $(OPENROAD_CMD) $(OPENROAD_SCRIPTS_DIR)/cds_partition_handoff.tcl)
+	@$(MAKE) --no-print-directory -C "$(FLOW_HOME)" \
+	  -f "$(FLOW_HOME)/Makefile" -f "$(SYN3D_ROOT)/taiwei/3dsyn.mk" \
+	  DESIGN_CONFIG="$(DESIGN_CONFIG)" 3dsyn-ord-tier-partition
 
 3dsyn-per-tier-synth:
 	@printf '[3D-Syn] Per-tier synthesis\n'

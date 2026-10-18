@@ -5,6 +5,7 @@ set -euo pipefail
 
 required_variables=(
   FLOW_HOME
+  SYN3D_ROOT
   DESIGN_CONFIG
   SYN3D_COARSE_SYNTH_DIR
   RESULTS_DIR
@@ -66,6 +67,8 @@ echo "[3D-Syn] 2D coarse-unit LIB : ${coarse_2d_lib}"
 make_args=(
   --no-print-directory
   -C "${FLOW_HOME}"
+  -f "${FLOW_HOME}/Makefile"
+  -f "${SYN3D_ROOT}/taiwei/3dsyn.mk"
   "DESIGN_CONFIG=${DESIGN_CONFIG}"
   "ADDITIONAL_LEFS=${additional_lefs}"
   "ADDITIONAL_LIBS=${additional_libs}"
@@ -74,7 +77,7 @@ make_args=(
 )
 
 make "${make_args[@]}" ord-preplace
-make "${make_args[@]}" ord-tier-partition
+make "${make_args[@]}" 3dsyn-ord-tier-partition
 
 for output in \
   2_2_floorplan_io.def \

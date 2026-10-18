@@ -47,6 +47,7 @@ required_variables=(
   SYN3D_ROOT TAIWEI_FLOW_HOME PLATFORM DESIGN BACKEND FLOW_VARIANT RUN_DIR
   DESIGN_CONFIG_2D DESIGN_SDC YOSYS_EXE YOSYS_PLUGIN OPENROAD_EXE GENUS_EXE
   INNOVUS_EXE PYTHON_EXE NUM_CORES SYNTH_OPT_MODE PREPLACE_OPT
+  TRITONPART_TIMING_AWARE
 )
 for name in "${required_variables[@]}"; do
   [[ -n "${!name:-}" ]] || fail "Required variable is not set: ${name}"
@@ -177,6 +178,7 @@ make_args=(
   "INNOVUS_EXE=${INNOVUS_EXE}"
   "PYTHON_EXE=${PYTHON_EXE}"
   "PREPLACE_OPT=${PREPLACE_OPT}"
+  "TRITONPART_TIMING_AWARE=${TRITONPART_TIMING_AWARE}"
 )
 
 # A non-empty public override wins. Otherwise the inner TaiWei make loads

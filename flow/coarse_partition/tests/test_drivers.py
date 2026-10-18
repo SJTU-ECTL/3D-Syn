@@ -53,8 +53,9 @@ esac
                 {
                     "PATH": "{}:{}".format(bin_dir, env["PATH"]),
                     "CALL_LOG": str(call_log),
-                    "EXPECTED_TARGET": "{}-tier-partition".format(backend),
+                    "EXPECTED_TARGET": "3dsyn-{}-tier-partition".format(backend),
                     "FLOW_HOME": str(root / "taiwei"),
+                    "SYN3D_ROOT": str(root / "3d-syn"),
                     "DESIGN_CONFIG": str(root / "config.mk"),
                     "SYN3D_COARSE_SYNTH_DIR": str(root / "coarse"),
                     "RESULTS_DIR": str(results),
@@ -67,7 +68,8 @@ esac
 
             calls = call_log.read_text(encoding="utf-8")
             self.assertIn("{}-preplace".format(backend), calls)
-            self.assertIn("{}-tier-partition".format(backend), calls)
+            self.assertIn("3dsyn-{}-tier-partition".format(backend), calls)
+            self.assertIn("taiwei/3dsyn.mk", calls)
             self.assertIn("coarse_units.lef", calls)
             self.assertIn("coarse_units.lib", calls)
             self.assertTrue((results / "partition.coarse.txt").is_file())
@@ -82,4 +84,3 @@ esac
 
 if __name__ == "__main__":
     unittest.main()
-

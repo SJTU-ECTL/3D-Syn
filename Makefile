@@ -65,6 +65,7 @@ baseline:
 	  --flow-variant "$(FLOW_VARIANT)" \
 	  --num-cores "$(NUM_CORES)" \
 	  --synth-opt-mode "$(SYNTH_OPT_MODE)" \
+	  --tritonpart-timing-aware "$(TRITONPART_TIMING_AWARE)" \
 	  --outer-iterations "$(OUTER_ITERATIONS)" \
 	  --stop-stage "$(BASELINE_STOP_STAGE)"
 

@@ -14,3 +14,6 @@ inputs and must publish the same partition contract.
 The root Makefile selects one entry point from `BACKEND`. The scripts remain
 side by side because each is a single backend driver; backend-specific Tcl
 collections use `ord/` and `cds/` directories elsewhere in the flow.
+
+`TRITONPART_TIMING_AWARE=0` disables timing-aware partitioning; set it to `1`
+to enable the TritonPart timing objective.

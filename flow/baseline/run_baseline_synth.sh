@@ -43,6 +43,8 @@ Optional arguments:
   --flow-variant NAME      Output namespace (default: baseline).
   --num-cores N            Tool thread count (default: 1).
   --synth-opt-mode MODE    normal or low_effort (default: low_effort).
+  --tritonpart-timing-aware 0|1
+                           Enable TritonPart timing awareness (default: 0).
   --innovus-bin PATH       Innovus executable when required by the selected backend.
   --outer-iterations N     Staged preCTS iterations (default: 1).
   --stop-stage STAGE       final, 3d-floorplan, or an exact TaiWei 3D target.
@@ -104,6 +106,7 @@ design_sdc=""
 flow_variant="baseline"
 num_cores="1"
 synth_opt_mode="low_effort"
+tritonpart_timing_aware="0"
 outer_iterations="1"
 stop_stage="final"
 
@@ -125,6 +128,7 @@ while (($#)); do
     --flow-variant) flow_variant="${2:-}"; shift 2 ;;
     --num-cores) num_cores="${2:-}"; shift 2 ;;
     --synth-opt-mode) synth_opt_mode="${2:-}"; shift 2 ;;
+    --tritonpart-timing-aware) tritonpart_timing_aware="${2:-}"; shift 2 ;;
     --outer-iterations) outer_iterations="${2:-}"; shift 2 ;;
     --stop-stage) stop_stage="${2:-}"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
@@ -152,6 +156,10 @@ case "${backend}" in ord|cds) ;; *) fail "--backend must be ord or cds: ${backen
 case "${synth_opt_mode}" in
   normal|low_effort) ;;
   *) fail "--synth-opt-mode must be normal or low_effort: ${synth_opt_mode}" ;;
+esac
+case "${tritonpart_timing_aware}" in
+  0|1) ;;
+  *) fail "--tritonpart-timing-aware must be 0 or 1: ${tritonpart_timing_aware}" ;;
 esac
 
 synth_platform="${platform%_3D}"
@@ -234,6 +242,7 @@ common_make_args=(
   "INNOVUS_EXE=${innovus_bin}"
   "PYTHON_EXE=${python_bin}"
   "SYNTH_OPT_MODE=${synth_opt_mode}"
+  "TRITONPART_TIMING_AWARE=${tritonpart_timing_aware}"
 )
 
 make_2d_args=(
@@ -338,7 +347,9 @@ require_file '2D preplace netlist' "${results_dir}/2_2_floorplan_io.v"
 require_file '2D preplace DEF' "${results_dir}/2_2_floorplan_io.def"
 
 printf '[3D-Syn][baseline] TaiWei tier partition\n'
-make "${make_2d_args[@]}" "${backend}-tier-partition"
+make "${make_2d_args[@]}" \
+  -f "${syn3d_root}/taiwei/3dsyn.mk" \
+  "3dsyn-${backend}-tier-partition"
 require_file 'TaiWei tier partition' "${results_dir}/partition.txt"
 
 resolve_unique_stage_def() {

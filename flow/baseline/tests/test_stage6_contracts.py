@@ -82,7 +82,7 @@ case \" $* \" in
     printf 'module test; endmodule\\n' > \"${results_dir}/2_2_floorplan_io.v\"
     printf 'VERSION 5.8 ;\\nEND DESIGN\\n' > \"${results_dir}/2_2_floorplan_io.def\"
     ;;
-  *' ord-tier-partition '*|*' cds-tier-partition '*)
+  *' 3dsyn-ord-tier-partition '*|*' 3dsyn-cds-tier-partition '*)
     printf 'u0 0\\n' > \"${results_dir}/partition.txt\"
     ;;
   *' 3dsyn-ord-3d-floorplan '*|*' 3dsyn-cds-3d-floorplan '*)

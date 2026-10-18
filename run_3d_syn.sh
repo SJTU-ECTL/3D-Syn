@@ -36,6 +36,9 @@ SYNTH_OPT_MODE="low_effort"
 # Backend pre-placement optimization: 0 (off), 1 (on)
 PREPLACE_OPT=0
 
+# TritonPart timing-aware partitioning: 0 (off), 1 (on)
+TRITONPART_TIMING_AWARE=0
+
 # Cross-tier interconnect resistance in ohms.
 HBT_R_OHM=1.0
 
@@ -77,6 +80,7 @@ case "${BACKEND}" in ord|cds) ;; *) fail "BACKEND must be ord or cds: ${BACKEND}
 case "${AREA_MODE}" in gnn|fixed) ;; *) fail "AREA_MODE must be gnn or fixed: ${AREA_MODE}" ;; esac
 case "${SYNTH_OPT_MODE}" in normal|low_effort) ;; *) fail "Invalid SYNTH_OPT_MODE: ${SYNTH_OPT_MODE}" ;; esac
 case "${PREPLACE_OPT}" in 0|1) ;; *) fail "PREPLACE_OPT must be 0 or 1: ${PREPLACE_OPT}" ;; esac
+case "${TRITONPART_TIMING_AWARE}" in 0|1) ;; *) fail "TRITONPART_TIMING_AWARE must be 0 or 1: ${TRITONPART_TIMING_AWARE}" ;; esac
 hbt_model_mode="${SYN3D_HBT_MODEL_MODE:-direct}"
 case "${hbt_model_mode}" in direct|scale) ;; *) fail "Invalid SYN3D_HBT_MODEL_MODE: ${hbt_model_mode}" ;; esac
 if [[ "${hbt_model_mode}" == direct ]]; then
@@ -127,6 +131,7 @@ make_args=(
   "AREA_MODE=${AREA_MODE}"
   "SYNTH_OPT_MODE=${SYNTH_OPT_MODE}"
   "PREPLACE_OPT=${PREPLACE_OPT}"
+  "TRITONPART_TIMING_AWARE=${TRITONPART_TIMING_AWARE}"
   "SYN3D_HBT_MODEL_MODE=${hbt_model_mode}"
   "SYN3D_HBT_R_OHM=${hbt_r_ohm}"
   "SYN3D_HBT_C_FF=${hbt_c_ff}"

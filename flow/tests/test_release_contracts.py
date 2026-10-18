@@ -51,6 +51,7 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn('RUN_TAG="example_3dsyn"', config)
         self.assertIn('FIXED_UTIL=1.0', config)
         self.assertIn('SYNTH_OPT_MODE="low_effort"', config)
+        self.assertIn('TRITONPART_TIMING_AWARE=0', config)
         self.assertIn('HBT_R_OHM=1.0', config)
         self.assertIn('HBT_C_FF=0.5', config)
         self.assertNotIn("--mode", text)
@@ -61,6 +62,7 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn('BACKEND="cds"', baseline_config)
         self.assertIn('RUN_TAG="example_baseline"', baseline_config)
         self.assertIn('SYNTH_OPT_MODE="low_effort"', baseline_config)
+        self.assertIn('TRITONPART_TIMING_AWARE=0', baseline_config)
         self.assertIn('case "${BACKEND}" in ord|cds)', baseline)
         self.assertIn('"BASELINE_STOP_STAGE=${BASELINE_STOP_STAGE}"', baseline)
 

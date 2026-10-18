@@ -24,6 +24,9 @@ RUN_TAG="example_baseline"
 # Genus optimization effort: normal, low_effort
 SYNTH_OPT_MODE="low_effort"
 
+# TritonPart timing-aware partitioning: 0 (off), 1 (on)
+TRITONPART_TIMING_AWARE=0
+
 # CPU cores.
 NUM_CORES=1
 
@@ -57,6 +60,7 @@ case "${BACKEND}" in ord|cds) ;; *) fail "BACKEND must be ord or cds: ${BACKEND}
 [[ "${RUN_TAG}" =~ ^[A-Za-z0-9_.-]+$ ]] || fail "Invalid RUN_TAG: ${RUN_TAG}"
 [[ "${NUM_CORES}" =~ ^[1-9][0-9]*$ ]] || fail "NUM_CORES must be positive: ${NUM_CORES}"
 case "${SYNTH_OPT_MODE}" in normal|low_effort) ;; *) fail "Invalid SYNTH_OPT_MODE: ${SYNTH_OPT_MODE}" ;; esac
+case "${TRITONPART_TIMING_AWARE}" in 0|1) ;; *) fail "TRITONPART_TIMING_AWARE must be 0 or 1: ${TRITONPART_TIMING_AWARE}" ;; esac
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 TAIWEI_HOME="${SYN3D_TAIWEI_HOME:-$(realpath -m "${SCRIPT_DIR}/../TaiWei")}"
@@ -89,6 +93,7 @@ exec make --no-print-directory -C "${SCRIPT_DIR}" baseline \
   "BASELINE_STOP_STAGE=${BASELINE_STOP_STAGE}" \
   "NUM_CORES=${NUM_CORES}" \
   "SYNTH_OPT_MODE=${SYNTH_OPT_MODE}" \
+  "TRITONPART_TIMING_AWARE=${TRITONPART_TIMING_AWARE}" \
   "YOSYS_EXE=${YOSYS_EXE}" \
   "YOSYS_CONFIG=${YOSYS_CONFIG}" \
   "OPENROAD_EXE=${OPENROAD_EXE}" \
