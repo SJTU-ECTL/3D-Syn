@@ -123,6 +123,7 @@ from modules.genus_common import (
     assert_no_direct_constants_in_synthesized_design,
     assert_no_multiple_wrapper_drivers,
     assert_sdc_clock_period_ps,
+    analyze_unclocked_sequential_sources,
     assert_verilog_readback_with_libs,
     collect_protected_top_names,
     collect_reachable_module_names,
@@ -592,7 +593,7 @@ source $d2d_extra_rc_tcl
 puts "INFO: SYN3D_GENUS_OPT_MODE = {genus_opt_mode}"
 
 check_design -unresolved > {check_design}
-check_timing_intent > {timing_intent}
+check_timing_intent -verbose > {timing_intent}
 report_messages > {pre_messages}
 report_gates > {pre_gates}
 report_ungroup_modules > {ungroup}
@@ -807,11 +808,24 @@ def assert_frozen_reachable_modules_exact_match(input_design, output_design, fro
     )
 
 
-def analyze_hetero_pass_reports(desc):
+def analyze_hetero_pass_reports(desc, wrapper_design, wrapper_plan):
     reports = desc["reports"]
     log_path = desc["paths"]["log_prefix"] + ".log"
     dangerous = parse_dangerous_messages(
-        [log_path, reports["post_messages"], reports["timing_intent"], reports["check_design"]]
+        [log_path, reports["post_messages"], reports["check_design"]]
+    )
+    timing_dangerous = parse_dangerous_messages([reports["timing_intent"]])
+    timing_dangerous = [
+        hit
+        for hit in timing_dangerous
+        if not (
+            hit["pattern"] == "missing clock"
+            and "have no clock waveform driving them" in hit["text"].lower()
+        )
+    ]
+    dangerous.extend(timing_dangerous)
+    unclocked_sources = analyze_unclocked_sequential_sources(
+        reports["timing_intent"], wrapper_design, wrapper_plan
     )
     post_sdc_clock = assert_sdc_clock_period_ps(desc["paths"]["output_sdc"], SDC_CLK_PERIOD_PS)
     active_boundary = parse_boundary_report(reports["active_boundary_after"])
@@ -834,6 +848,7 @@ def analyze_hetero_pass_reports(desc):
             ("dangerous_messages", dangerous),
             ("dangerous_log_pattern_count", len(dangerous)),
             ("post_sdc_clock", post_sdc_clock),
+            ("unclocked_sequential_sources", unclocked_sources),
             ("active_boundary", active_boundary),
             ("frozen_boundary", frozen_boundary),
             ("ungroup", ungroup),
@@ -881,7 +896,7 @@ def run_hetero_pass(desc, wrapper_design, wrapper_plan, upper_lib_cells, bottom_
     frozen_checks = assert_frozen_reachable_modules_exact_match(
         input_design, output_design, desc["frozen_module"], upper_lib_cells | bottom_lib_cells
     )
-    report_checks = analyze_hetero_pass_reports(desc)
+    report_checks = analyze_hetero_pass_reports(desc, wrapper_design, wrapper_plan)
     return OrderedDict(
         [
             ("pass_name", desc["pass_name"]),
