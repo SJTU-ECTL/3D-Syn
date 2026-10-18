@@ -38,9 +38,12 @@ if {$aspect_ratio <= 0.0} {
 
 set fixed_core_area ""
 if {[info exists ::env(FIXED_CORE_AREA)] && $::env(FIXED_CORE_AREA) ne ""} {
+  if {![regexp {^[+]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?$} $::env(FIXED_CORE_AREA)]} {
+    utl::error FP 103 "FIXED_CORE_AREA must be a positive number. got '$::env(FIXED_CORE_AREA)'"
+  }
   set fixed_core_area [expr {double($::env(FIXED_CORE_AREA))}]
-  if {$fixed_core_area <= 0.0} {
-    utl::error FP 103 "FIXED_CORE_AREA must be > 0. got $fixed_core_area"
+  if {$fixed_core_area <= 0.0 || $fixed_core_area >= Inf} {
+    utl::error FP 103 "FIXED_CORE_AREA must be a positive number. got '$::env(FIXED_CORE_AREA)'"
   }
 }
 

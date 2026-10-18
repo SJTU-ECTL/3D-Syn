@@ -455,6 +455,8 @@ run_physical_stage() {
         "${stage_def}" "${stage_netlist}" "${results_dir}/2_floorplan.sdc"
     fi
     make "${make_3d_args[@]}" "${stage}"
+  elif [[ "${stage}" == ord-3d-floorplan || "${stage}" == cds-3d-floorplan ]]; then
+    make "${make_3d_overlay_args[@]}" "3dsyn-${stage}"
   elif [[ "${stage}" == cds-cts ]]; then
     run_cds_cts
   else

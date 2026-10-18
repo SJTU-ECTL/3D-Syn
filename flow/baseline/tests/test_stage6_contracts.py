@@ -24,6 +24,7 @@ class BaselineContractTests(unittest.TestCase):
         self.assertLess(text.index("3dsyn-baseline-genus"), text.index('"${backend}-preplace"'))
         self.assertIn("ord-3d-floorplan", text)
         self.assertIn("cds-3d-floorplan", text)
+        self.assertIn('"3dsyn-${stage}"', text)
         self.assertIn('"TIER_ALLOW_NET=upper-only"', text)
         self.assertIn('"TIER_ALLOW_NET=bottom-only"', text)
         self.assertNotIn("flow/run_backend.sh", text)
@@ -84,7 +85,7 @@ case \" $* \" in
   *' ord-tier-partition '*|*' cds-tier-partition '*)
     printf 'u0 0\\n' > \"${results_dir}/partition.txt\"
     ;;
-  *' ord-3d-floorplan '*|*' cds-3d-floorplan '*)
+  *' 3dsyn-ord-3d-floorplan '*|*' 3dsyn-cds-3d-floorplan '*)
     printf 'module test; endmodule\\n' > \"${results_dir}/2_3_floorplan_3d.v\"
     printf 'VERSION 5.8 ;\\nEND DESIGN\\n' > \"${results_dir}/2_3_floorplan_3d.def\"
     ;;
@@ -299,8 +300,11 @@ class BackendContractTests(unittest.TestCase):
         case_dirs = sorted(path.parent for path in configs.glob("*/*/config2d.mk"))
         self.assertEqual(len(case_dirs), 20)
         for case_dir in case_dirs:
-            self.assertTrue((case_dir / "config.mk").is_file())
+            config = case_dir / "config.mk"
+            self.assertTrue(config.is_file())
             self.assertTrue((case_dir / "constraint.sdc").is_file())
+            config_text = config.read_text(encoding="utf-8")
+            self.assertEqual(config_text.count("export FIXED_CORE_AREA ="), 1)
 
 
 if __name__ == "__main__":

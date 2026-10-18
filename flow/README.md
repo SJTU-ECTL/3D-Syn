@@ -19,7 +19,7 @@ drivers called by the release Makefile.
 
 | Path | Responsibility |
 | --- | --- |
-| `baseline` | TaiWei Yosys-to-Genus comparison frontend |
+| `baseline` | TaiWei comparison flow |
 | `yosys_json_toolkit` | Shared operations on Yosys JSON netlists |
 | `env_isolation` | Isolate Python libraries from EDA subprocess runtimes |
 | `run_frontend.sh` | Frontend stage-range driver through backend handoff |

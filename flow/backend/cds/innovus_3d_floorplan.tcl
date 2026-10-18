@@ -52,9 +52,12 @@ puts "INFO: Tier areas: upper=$A_up bottom=$A_bot max=$A_max"
 puts "INFO: Auto core size: W=$AUTO_CORE_W H=$AUTO_CORE_H"
 
 if {$FIXED_CORE_AREA ne ""} {
+  if {![regexp {^[+]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?$} $FIXED_CORE_AREA]} {
+    error "FIXED_CORE_AREA must be a positive number. got '$FIXED_CORE_AREA'"
+  }
   set requested_core_area [expr {double($FIXED_CORE_AREA)}]
-  if {$requested_core_area <= 0.0} {
-    error "FIXED_CORE_AREA must be > 0. got '$FIXED_CORE_AREA'"
+  if {$requested_core_area <= 0.0 || $requested_core_area >= Inf} {
+    error "FIXED_CORE_AREA must be a positive number. got '$FIXED_CORE_AREA'"
   }
   set CORE_W [expr {sqrt($requested_core_area / double($ASPECT_RATIO))}]
   set CORE_H [expr {$CORE_W * double($ASPECT_RATIO)}]

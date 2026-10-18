@@ -55,21 +55,20 @@ their tool commands differ.
 
 ## Fixed 3D core area
 
-When `FIXED_CORE_AREA` is unset, the backend uses TaiWei's automatic tier-area
-sizing. When set, it is a positive area in µm² used with the configured aspect
-ratio `height / width` to derive the same requested dimensions for ORD and CDS:
+Set `FIXED_CORE_AREA` in `configs/<technology>/<design>/config.mk`. An empty
+value uses `CORE_UTILIZATION`; otherwise the value is the 3D core area in µm²:
+
+```make
+export FIXED_CORE_AREA =
+```
+
+A positive value is used with the configured aspect ratio `height / width` to
+derive the same requested dimensions for ORD and CDS:
 
 ```text
 width  = sqrt(area / aspect_ratio)
 height = width * aspect_ratio
 ```
-
-Both adapters report the sizing mode, requested area, and final dimensions.
-They also write the requested/planned and tool-snapped dimensions to the
-`floorplan-3d` handoff manifest. Small ORD/CDS differences after snapping are
-expected because each tool aligns the requested box to its own placement grid.
-The CDS adapter also records any expansion required by an explicitly enabled
-HBT-capacity rule.
 
 ## Constraints
 
