@@ -41,7 +41,7 @@ class ReleaseContractTests(unittest.TestCase):
             self.assertIn('TECH="nangate45_3D"', config)
             self.assertIn("asap7_3D, nangate45_3D, asap7_nangate45_3D", config)
             self.assertIn(
-                "gcd|aes|ibex|jpeg|ariane133|bp_quad|swerv_wrapper", text
+                "gcd|aes|ibex|jpeg|bp_quad|swerv_wrapper", text
             )
 
     def test_complete_launcher_defaults_and_fixed_util_contract(self) -> None:
@@ -90,7 +90,7 @@ class ReleaseContractTests(unittest.TestCase):
     def test_release_config_matrix(self) -> None:
         configs = sorted((ROOT / "configs").glob("*_3D/*/config.mk"))
         observed = {(path.parents[1].name, path.parent.name) for path in configs}
-        common = {"gcd", "aes", "ibex", "jpeg", "ariane133", "swerv_wrapper"}
+        common = {"gcd", "aes", "ibex", "jpeg", "swerv_wrapper"}
         expected = {
             (tech, design)
             for tech in ("asap7_3D", "nangate45_3D", "asap7_nangate45_3D")

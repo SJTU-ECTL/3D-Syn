@@ -10,7 +10,7 @@ set -euo pipefail
 # Technology: asap7_3D, nangate45_3D, asap7_nangate45_3D
 TECH="nangate45_3D"
 
-# Design: gcd, aes, ibex, jpeg, ariane133, bp_quad, swerv_wrapper
+# Design: gcd, aes, ibex, jpeg, bp_quad, swerv_wrapper
 DESIGN="gcd"
 
 # Backend:
@@ -55,7 +55,7 @@ RUN_TAG="${SYN3D_RUN_TAG:-${RUN_TAG}}"
 NUM_CORES="${SYN3D_NUM_CORES:-${NUM_CORES}}"
 
 case "${TECH}" in asap7_3D|nangate45_3D|asap7_nangate45_3D) ;; *) fail "Unsupported technology: ${TECH}" ;; esac
-case "${DESIGN}" in gcd|aes|ibex|jpeg|ariane133|bp_quad|swerv_wrapper) ;; *) fail "Unsupported design: ${DESIGN}" ;; esac
+case "${DESIGN}" in gcd|aes|ibex|jpeg|bp_quad|swerv_wrapper) ;; *) fail "Unsupported design: ${DESIGN}" ;; esac
 case "${BACKEND}" in ord|cds) ;; *) fail "BACKEND must be ord or cds: ${BACKEND}" ;; esac
 [[ "${RUN_TAG}" =~ ^[A-Za-z0-9_.-]+$ ]] || fail "Invalid RUN_TAG: ${RUN_TAG}"
 [[ "${NUM_CORES}" =~ ^[1-9][0-9]*$ ]] || fail "NUM_CORES must be positive: ${NUM_CORES}"
