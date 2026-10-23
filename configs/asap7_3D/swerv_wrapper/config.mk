@@ -20,7 +20,7 @@ export ADDITIONAL_LIBS = $(sort $(wildcard $(PLATFORM_DIR)/lib_bottom/NLDM/faker
 export CORE_MARGIN = 2
 export ASPECT_RATIO = 1.0
 export CORE_UTILIZATION = 50
-export FIXED_CORE_AREA =
+export FIXED_CORE_AREA = 47700
 
 export PLACE_DENSITY_LB_ADDON = 0.08
 export TNS_END_PERCENT        = 100

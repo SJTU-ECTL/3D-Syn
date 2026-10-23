@@ -40,6 +40,7 @@ Optional arguments:
   --design-config PATH     2D config.mk; defaults to the repository case.
   --design-config-3d PATH  3D config.mk; defaults to the repository case.
   --design-sdc PATH        Constraint file; defaults to the repository case.
+  --fixed-core-area UM2    Override 3D core area; an empty value uses config.mk.
   --flow-variant NAME      Output namespace (default: baseline).
   --num-cores N            Tool thread count (default: 1).
   --synth-opt-mode MODE    normal or low_effort (default: low_effort).
@@ -103,6 +104,7 @@ python_bin=""
 design_config=""
 design_config_3d=""
 design_sdc=""
+fixed_core_area="${FIXED_CORE_AREA:-}"
 flow_variant="baseline"
 num_cores="1"
 synth_opt_mode="low_effort"
@@ -125,6 +127,7 @@ while (($#)); do
     --design-config) design_config="${2:-}"; shift 2 ;;
     --design-config-3d) design_config_3d="${2:-}"; shift 2 ;;
     --design-sdc) design_sdc="${2:-}"; shift 2 ;;
+    --fixed-core-area) fixed_core_area="${2:-}"; shift 2 ;;
     --flow-variant) flow_variant="${2:-}"; shift 2 ;;
     --num-cores) num_cores="${2:-}"; shift 2 ;;
     --synth-opt-mode) synth_opt_mode="${2:-}"; shift 2 ;;
@@ -163,6 +166,10 @@ case "${tritonpart_timing_aware}" in
 esac
 
 synth_platform="${platform%_3D}"
+if [[ -n "${fixed_core_area}" ]]; then
+  [[ "${fixed_core_area}" =~ ^[+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$ ]] || fail "Invalid fixed core area: ${fixed_core_area}"
+  awk -v area="${fixed_core_area}" 'BEGIN { exit !(area > 0 && area < 1e308) }' || fail 'Fixed core area must be positive and finite.'
+fi
 
 taiwei_home="$(realpath -m -- "${taiwei_home}")"
 taiwei_flow_home="${taiwei_home}/TaiWei-Pin-3D"
@@ -261,6 +268,10 @@ make_3d_args=(
   "DESIGN_CONFIG=${design_config_3d}"
   "USE_FLOW=${use_flow}"
 )
+# Command-line assignments take precedence over the case's config.mk.
+if [[ -n "${fixed_core_area}" ]]; then
+  make_3d_args+=("FIXED_CORE_AREA=${fixed_core_area}")
+fi
 make_3d_overlay_args=(
   "${make_3d_args[@]}"
   -f "${syn3d_root}/taiwei/3dsyn.mk"

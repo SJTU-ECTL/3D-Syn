@@ -8,7 +8,7 @@ export CORE_MARGIN = 0.2
 export GLOBAL_ROUTE_ARGS = -verbose -congestion_iterations 30
 export DETAILED_ROUTE_END_ITERATION = 5
 export CORE_UTILIZATION ?= 60
-export FIXED_CORE_AREA =
+export FIXED_CORE_AREA = 40
 
 export NUM_CORES   ?= 32
 

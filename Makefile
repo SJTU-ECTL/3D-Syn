@@ -62,6 +62,7 @@ baseline:
 	  --design-config "$(DESIGN_CONFIG_2D)" \
 	  --design-config-3d "$(DESIGN_CONFIG_3D)" \
 	  --design-sdc "$(DESIGN_SDC)" \
+	  --fixed-core-area "$(FIXED_CORE_AREA)" \
 	  --flow-variant "$(FLOW_VARIANT)" \
 	  --num-cores "$(NUM_CORES)" \
 	  --synth-opt-mode "$(SYNTH_OPT_MODE)" \
