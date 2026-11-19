@@ -8,6 +8,12 @@ library while accounting for cross-tier interconnect delay.
 
 3D-Syn is implemented based on [TaiWei](https://github.com/CODA-Team/TaiWei), an open-source 3D IC design flow.
 
+## Reference
+
+**[3D-Syn: 3D-aware Synthesis Flow for Heterogeneous LogicFolding 3D ICs](docs/ASPDAC27_3D-Syn.pdf)**  
+Zehao Yang, Zhiyu Zheng, Chang Meng, Zhiang Wang, and Weikang Qian.  
+To appear in the *Proceedings of the 32nd Asia and South Pacific Design Automation Conference (ASP-DAC 2027)*.
+
 ## Repository Layout
 
 ```text
@@ -65,7 +71,7 @@ library while accounting for cross-tier interconnect delay.
 ### Clone and Build
 
 ```bash
-git clone https://github.com/Hywel17/3D-Syn.git
+git clone https://github.com/SJTU-ECTL/3D-Syn.git
 git clone --recurse-submodules https://github.com/CODA-Team/TaiWei.git
 git -C TaiWei checkout ab56e8590946f2f335fd1ac315f69114f66a12ba
 git -C TaiWei submodule update --init --recursive
